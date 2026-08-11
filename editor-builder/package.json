@@ -1,0 +1,18 @@
+{
+  "name": "htmlviewer-editor-builder",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Builds the offline CodeMirror 6 bundle for the HTML Viewer app",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "codemirror": "^6.0.2",
+    "esbuild": "^0.28.2",
+    "prettier": "^3.9.6"
+  }
+}

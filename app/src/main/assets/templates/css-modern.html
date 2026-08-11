@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>现代布局示例</title>
+    <style>
+        :root {
+            --primary: #4355b9;
+            --surface: #ffffff;
+            --bg: #f5f2fa;
+            --radius: 16px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            margin: 0;
+            background: var(--bg);
+            color: #1b1b1f;
+            padding: 24px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0, 0, 0, .12); }
+        .badge {
+            display: inline-block;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 13px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg: #131318; --surface: #1f1f25; }
+            body { color: #e4e1e9; }
+        }
+    </style>
+</head>
+<body>
+    <h1>响应式卡片布局</h1>
+    <span class="badge">Flexbox + Grid</span>
+    <div class="grid">
+        <div class="card"><h3>卡片一</h3><p>自动适配屏幕宽度,手机与平板都能获得良好体验。</p></div>
+        <div class="card"><h3>卡片二</h3><p>支持深色模式,跟随系统外观自动切换。</p></div>
+        <div class="card"><h3>卡片三</h3><p>hover 悬浮动画,交互反馈流畅自然。</p></div>
+    </div>
+</body>
+</html>

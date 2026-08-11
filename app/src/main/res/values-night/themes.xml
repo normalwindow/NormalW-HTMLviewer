@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式主主题(与浅色一致:外观由 Material 3 Compose 驱动) -->
+    <style name="Theme.HTMLviewer" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Android 12+ 启动画面(深色) -->
+    <style name="Theme.HTMLviewer.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.HTMLviewer</item>
+    </style>
+</resources>

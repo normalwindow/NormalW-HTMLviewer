@@ -1,0 +1,36 @@
+# ===================== 构建产物 =====================
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+dist/
+# 本地 Release 资产目录(APK 上传至 GitHub Releases,不入库)
+release/
+
+# ===================== 本地配置与 IDE =====================
+local.properties
+*.iml
+.idea/
+.kotlin/
+# Android Studio 生成的 APK 签名信息
+*.apk.idsig
+
+# ===================== 签名密钥(严禁入库) =====================
+*.jks
+*.keystore
+keystore.properties
+
+# ===================== 操作系统文件 =====================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===================== Node 依赖(editor-builder) =====================
+# CodeMirror bundle 产物已提交至 assets/editor/,仅忽略依赖目录
+editor-builder/node_modules/
+
+# ===================== 日志与临时数据 =====================
+AppLog/
+*.log
+.reasonix/

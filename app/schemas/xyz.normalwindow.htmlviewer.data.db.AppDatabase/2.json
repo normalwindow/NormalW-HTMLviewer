@@ -1,0 +1,104 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "66fd0f283f07fe65698ae0a2b1c9cc70",
+    "entities": [
+      {
+        "tableName": "file_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`path` TEXT NOT NULL, `isFavorite` INTEGER NOT NULL, `groupId` INTEGER, `lastOpenedAt` INTEGER, `encoding` TEXT, `lineCount` INTEGER, `charCount` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`path`))",
+        "fields": [
+          {
+            "fieldPath": "path",
+            "columnName": "path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFavorite",
+            "columnName": "isFavorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "groupId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastOpenedAt",
+            "columnName": "lastOpenedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "encoding",
+            "columnName": "encoding",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lineCount",
+            "columnName": "lineCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "charCount",
+            "columnName": "charCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "path"
+          ]
+        }
+      },
+      {
+        "tableName": "favorite_group",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '66fd0f283f07fe65698ae0a2b1c9cc70')"
+    ]
+  }
+}

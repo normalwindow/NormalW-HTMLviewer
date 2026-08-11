@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HTML Viewer</string>
+
+    <!-- 底部导航 -->
+    <string name="tab_files">文件</string>
+    <string name="tab_recent">最近</string>
+    <string name="tab_favorites">收藏</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- 顶部操作 -->
+    <string name="action_new_file">新建文件</string>
+    <string name="action_new_dir">新建文件夹</string>
+    <string name="action_from_template">从模板新建</string>
+    <string name="action_refresh">刷新</string>
+    <string name="action_search">搜索</string>
+    <string name="action_close_search">关闭搜索</string>
+    <string name="action_view_list">列表视图</string>
+    <string name="action_view_grid">网格视图</string>
+    <string name="action_back">返回上级</string>
+    <string name="action_more">更多</string>
+
+    <!-- 文件列表 -->
+    <string name="dir_up">返回上级</string>
+    <string name="item_modified">修改于 %1$s</string>
+    <string name="item_size">%1$s</string>
+    <string name="item_dirs">%1$d 个文件夹</string>
+    <string name="selection_count">已选 %1$d 项</string>
+    <string name="action_delete">删除</string>
+    <string name="action_move">移动</string>
+    <string name="action_copy">复制</string>
+    <string name="action_share">分享</string>
+    <string name="action_favorite">收藏</string>
+    <string name="action_unfavorite">取消收藏</string>
+    <string name="action_rename">重命名</string>
+    <string name="action_open">打开</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_done">完成</string>
+    <string name="action_undo">撤销</string>
+
+    <!-- 空态 -->
+    <string name="empty_dir_title">此文件夹为空</string>
+    <string name="empty_dir_hint">点击右下角按钮创建第一个 HTML 文件</string>
+    <string name="empty_search_title">未找到匹配的文件</string>
+    <string name="empty_search_hint">换个关键词试试</string>
+    <string name="empty_recent_title">暂无最近打开</string>
+    <string name="empty_recent_hint">打开过的文件会显示在这里</string>
+    <string name="empty_fav_title">暂无收藏</string>
+    <string name="empty_fav_hint">长按文件或点击星标即可收藏</string>
+
+    <!-- 对话框 -->
+    <string name="dialog_new_file_title">新建 HTML 文件</string>
+    <string name="dialog_new_dir_title">新建文件夹</string>
+    <string name="dialog_rename_title">重命名</string>
+    <string name="dialog_template_title">从模板新建</string>
+    <string name="dialog_name_hint">名称</string>
+    <string name="dialog_template_create">创建 %1$s</string>
+
+    <!-- 批量操作模式 -->
+    <string name="batch_move_title">选择移动目标</string>
+    <string name="batch_copy_title">选择复制目标</string>
+    <string name="batch_confirm_move">移动 %1$d 项到此</string>
+    <string name="batch_confirm_copy">复制 %1$d 项到此</string>
+
+    <!-- Snackbar -->
+    <string name="snack_created_file">已创建文件</string>
+    <string name="snack_created_dir">已创建文件夹</string>
+    <string name="snack_deleted">已删除 %1$d 项</string>
+    <string name="snack_undo_deleted">已恢复</string>
+    <string name="snack_renamed">已重命名</string>
+    <string name="snack_moved">已移动 %1$d 项</string>
+    <string name="snack_copied">已复制 %1$d 项</string>
+    <string name="snack_fav_added">已加入收藏</string>
+    <string name="snack_fav_removed">已取消收藏</string>
+    <string name="snack_trash_empty">没有可撤销的删除</string>
+    <string name="snack_error_create">创建失败</string>
+    <string name="snack_error_rename">重命名失败</string>
+    <string name="snack_error_delete">删除失败</string>
+    <string name="snack_error_move">移动失败</string>
+    <string name="snack_error_copy">复制失败</string>
+    <string name="snack_error_io">操作失败,请重试</string>
+
+    <!-- 编辑器 -->
+    <string name="action_find">查找替换</string>
+    <string name="action_preview">浏览器预览</string>
+    <string name="action_split_preview">分屏预览</string>
+    <string name="action_redo">重做</string>
+    <string name="action_auto_save">自动保存</string>
+    <string name="action_scrollbar">右侧滚动条</string>
+    <string name="action_format">整理格式</string>
+    <string name="action_convert_utf8">转存为 UTF-8</string>
+    <string name="action_save_and_exit">保存并退出</string>
+    <string name="action_discard">放弃更改</string>
+    <string name="dialog_unsaved_title">未保存的更改</string>
+    <string name="dialog_unsaved_message">此文件有未保存的更改,退出前要保存吗?</string>
+    <string name="snack_saved">已保存</string>
+    <string name="snack_error_save">保存失败</string>
+    <string name="snack_converted_utf8">已转存为 UTF-8</string>
+    <string name="snack_missing_file">文件不存在或已被移动</string>
+    <string name="snack_formatted">已整理格式</string>
+    <string name="snack_format_failed">格式化失败,请检查代码语法</string>
+    <string name="snack_editor_load_failed">编辑器组件加载失败,请重试</string>
+    <string name="status_autosave_on">自动保存</string>
+    <string name="status_autosave_off">手动保存</string>
+
+    <!-- 设置中心 -->
+    <string name="settings_section_engine">渲染内核</string>
+    <string name="engine_light">轻量模式</string>
+    <string name="engine_light_desc">系统 WebView(Chromium),零额外开销,跟随系统更新</string>
+    <string name="engine_gecko">兼容模式</string>
+    <string name="engine_gecko_desc">内置 GeckoView 内核,渲染效果固定,不受系统版本影响</string>
+    <string name="engine_gecko_note">兼容模式内置约 100MB 独立引擎,首次切换或启动时会稍慢;若页面在系统 WebView 上显示异常,可在此切换</string>
+    <string name="settings_engine_versions">内核版本</string>
+    <string name="settings_engine_versions_value">WebView: %1$s ｜ GeckoView: %2$s</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="settings_dynamic_color">动态取色</string>
+    <string name="settings_dynamic_color_desc">Android 12+ 使用壁纸配色(Material You)</string>
+    <string name="settings_default_view">默认网格视图</string>
+    <string name="settings_default_view_desc">文件页启动时使用网格布局而非列表</string>
+    <string name="settings_custom_color">自定义主题色</string>
+    <string name="settings_custom_color_desc">选择喜欢的颜色作为主色调（优先于动态取色）；"◌" 表示跟随系统</string>
+    <string name="settings_section_editor">编辑器</string>
+    <string name="settings_font_size">字号</string>
+    <string name="settings_tab_size">缩进宽度</string>
+    <string name="settings_wrap">自动换行</string>
+    <string name="settings_wrap_desc">超出屏幕的代码自动换行显示</string>
+    <string name="settings_value">%1$d</string>
+    <string name="settings_section_preview">浏览器与预览</string>
+    <string name="settings_click_opens">单击文件默认打开</string>
+    <string name="settings_click_opens_browser">浏览器预览</string>
+    <string name="settings_click_opens_editor">代码编辑器</string>
+    <string name="settings_default_ua">默认 UA 标识</string>
+    <string name="settings_browser_js">JavaScript</string>
+    <string name="settings_browser_js_desc">浏览器预览页的 JavaScript 开关</string>
+    <string name="settings_browser_console">浏览器控制台</string>
+    <string name="settings_browser_console_desc">预览时收集 console 日志与页面错误,可在工具栏抽屉查看</string>
+    <string name="settings_section_cache">资源缓存</string>
+    <string name="settings_resource_cache">离线资源缓存</string>
+    <string name="settings_resource_cache_desc">网络资源(CDN 等)保存到 HTML 同目录隐藏文件夹,离线可用</string>
+    <string name="settings_cache_cleanup">清理缓存资源</string>
+    <string name="settings_cache_size">已缓存 %1$d 个资源,占用 %2$s</string>
+    <string name="settings_cache_empty">暂无缓存(打开网页后自动固化)</string>
+    <string name="settings_cache_clear_btn">清理</string>
+    <string name="settings_section_backup">数据备份</string>
+    <string name="settings_data_export">导出数据</string>
+    <string name="settings_data_export_desc">压缩全部文件为 zip(含清单),可分享保存</string>
+    <string name="settings_data_import">导入数据</string>
+    <string name="settings_data_import_desc">从备份 zip 恢复文件到工作目录</string>
+    <string name="settings_data_import_done">已导入 %1$d 个文件</string>
+    <string name="settings_section_debug">开发者</string>
+    <string name="settings_debug_mode">Debug 模式</string>
+    <string name="settings_debug_mode_desc">记录应用运行日志(编辑器加载/桥异常/页面错误),供导出分析</string>
+    <string name="settings_export_logs">导出运行日志</string>
+    <string name="settings_export_logs_desc">生成调试报告(设备信息/设置快照/应用日志/logcat)并分享</string>
+    <string name="settings_clear_logs">清空日志</string>
+    <string name="settings_clear_logs_desc">清空内存日志缓冲与已导出的日志文件</string>
+    <string name="settings_clear_logs_done">已清理 %1$d 个日志文件</string>
+    <string name="settings_export_logs_info">已导出 %1$d 个文件,占用 %2$s</string>
+    <string name="settings_fullscreen_immersive">全屏沉浸模式</string>
+    <string name="settings_fullscreen_immersive_desc">进入预览页时默认沉浸(菜单可随时切换)</string>
+    <string name="group_all">全部</string>
+    <string name="action_manage_groups">管理分组</string>
+    <string name="action_new_group">新建分组</string>
+    <string name="action_rename_group">重命名分组</string>
+    <string name="action_delete_group">删除分组</string>
+    <string name="action_add_to_group">加入收藏分组</string>
+    <string name="dialog_group_picker_title">选择收藏分组</string>
+    <string name="group_picker_empty">还没有分组,先去\"管理分组\"新建一个吧</string>
+    <string name="snack_group_created">已创建分组</string>
+    <string name="snack_group_deleted">已删除分组</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_about_version">应用版本</string>
+    <string name="action_attachments">附加文件</string>
+    <string name="dialog_attachments_title">附加文件 - %1$s</string>
+    <string name="attachments_empty">暂无附加文件。可新建 JS/CSS 资源,并与本页面联动。</string>
+    <string name="attachments_auto_ref">自动引用到 HTML（仅 JS/CSS）</string>
+    <string name="attachments_new_js">新建 JS</string>
+    <string name="attachments_new_css">新建 CSS</string>
+    <string name="attachments_new_ts">新建 TS</string>
+    <string name="attachments_new_json">新建 JSON</string>
+    <string name="attachments_new_other">其他…</string>
+    <string name="attachments_new_title">新建附加文件</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_open_external">外部浏览器打开</string>
+    <string name="action_retry">重试</string>
+    <string name="browser_refresh">刷新</string>
+    <string name="browser_more">更多</string>
+    <string name="browser_home">返回主页</string>
+    <string name="browser_ua_title">用户代理标识</string>
+    <string name="browser_js">JavaScript</string>
+    <string name="browser_immersive">沉浸模式</string>
+    <string name="browser_touchpad">模拟鼠标</string>
+    <string name="browser_touchpad_desc">单击点击、双指滑动</string>
+    <string name="browser_console">控制台</string>
+    <string name="browser_console_desc">收集 console 日志与页面错误</string>
+    <string name="browser_console_gecko_note">Gecko 内核仅支持页面加载错误</string>
+    <string name="browser_console_title">控制台与错误</string>
+    <string name="browser_console_clear">清空</string>
+    <string name="browser_console_copy_all">复制全部</string>
+    <string name="browser_console_copied">已复制</string>
+    <string name="browser_console_empty">暂无日志</string>
+    <string name="console_level_error">错误</string>
+    <string name="console_level_warn">警告</string>
+    <string name="console_level_log">日志</string>
+    <string name="console_level_info">信息</string>
+    <string name="console_level_debug">调试</string>
+</resources>

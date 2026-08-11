@@ -1,0 +1,7 @@
+# GeckoView 运行时配置(经 GeckoRuntimeSettings.configFilePath 加载)
+# 显式声明磁盘缓存参数:GeckoView 默认已启用持久 profile + 磁盘缓存,
+# 此处防御默认值变化。服务器响应头(no-store/no-cache)仍优先于缓存。
+prefs:
+  browser.cache.disk.enable: true
+  browser.cache.disk.capacity: 358400
+  network.http.use-cache: 1

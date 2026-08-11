@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互示例</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 2rem 1.25rem;
+            text-align: center;
+        }
+        button {
+            background: #4355b9;
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            padding: 12px 28px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity .15s ease;
+        }
+        button:active { opacity: .75; }
+        #count { font-size: 48px; font-weight: 700; margin: 16px 0; }
+    </style>
+</head>
+<body>
+    <h1>计数器</h1>
+    <div id="count">0</div>
+    <button id="btn">点我 +1</button>
+
+    <script>
+        let count = 0;
+        const el = document.getElementById('count');
+        document.getElementById('btn').addEventListener('click', () => {
+            count++;
+            el.textContent = count;
+        });
+    </script>
+</body>
+</html>

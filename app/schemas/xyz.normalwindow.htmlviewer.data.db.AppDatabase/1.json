@@ -1,0 +1,70 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "dc224f074530f115a33109586922c4ca",
+    "entities": [
+      {
+        "tableName": "file_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`path` TEXT NOT NULL, `isFavorite` INTEGER NOT NULL, `lastOpenedAt` INTEGER, `encoding` TEXT, `lineCount` INTEGER, `charCount` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`path`))",
+        "fields": [
+          {
+            "fieldPath": "path",
+            "columnName": "path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFavorite",
+            "columnName": "isFavorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastOpenedAt",
+            "columnName": "lastOpenedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "encoding",
+            "columnName": "encoding",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lineCount",
+            "columnName": "lineCount",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "charCount",
+            "columnName": "charCount",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "path"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dc224f074530f115a33109586922c4ca')"
+    ]
+  }
+}

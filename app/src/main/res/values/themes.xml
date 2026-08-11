@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Compose 应用主主题:使用原生 Material 主题作为父级(不依赖 AppCompat/MDC),
+        界面外观完全由 Material 3 Compose 主题驱动。
+    -->
+    <style name="Theme.HTMLviewer" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- Android 12+ 启动画面 -->
+    <style name="Theme.HTMLviewer.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.HTMLviewer</item>
+    </style>
+</resources>

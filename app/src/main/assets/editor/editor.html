@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <!-- 注意:禁用 user-scalable 会锁死 WebView 缩放,且部分 ROM(如 MIUI)
+         的 WebView 会因此吞掉触摸滚动——双指缩放由 settings + CM6 重测兜底 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        /*
+         * 布局策略(彻底修复滚动后空白/文字不可见):
+         * 1. 视口单位 100vh + 绝对定位(top/left/right/bottom),不依赖 height:100% 链
+         *    ——任何父级高度塌陷都不会影响编辑器视口
+         * 2. 禁用 inset 简写(Chrome 87+ 才支持,bundle target 是 chrome80,
+         *    旧 WebView 上 inset 完全无效会导致布局失效)
+         * 3. JS 侧 enforceSize() 强制同步 .cm-editor/.cm-scroller 尺寸,双保险
+         */
+        html, body { height: 100vh; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+        /* 背景兜底:注意不能用 #editor/.cm-editor 的 ID+类组合设置背景——
+           ID 选择器 specificity 会压过 oneDark 主题的类选择器,
+           导致 dark 模式下代码区永远白底。容器留白,内部交给主题。 */
+        html, body { background: #ffffff; }
+        #editor {
+            /* 必须保持绝对定位:静态布局时高度=内容(塌陷),
+               enforceSize 会把 CM6 视口设成内容高度 → 白屏/无法滚动 */
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: #ffffff;
+        }
+        .cm-editor { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+        /* 系统等宽字体栈:避免个别设备上自定义字体加载异常 */
+        .cm-scroller {
+            font-family: Consolas, "Courier New", "Microsoft YaHei", monospace;
+        }
+        /* 移动端触摸优化 */
+        .cm-content { padding-top: 8px; padding-bottom: 48px; }
+    </style>
+</head>
+<body>
+<div id="editor"></div>
+<script src="bundle.js"></script>
+</body>
+</html>
