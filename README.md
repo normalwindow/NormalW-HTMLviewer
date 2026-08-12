@@ -3,7 +3,7 @@
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Android-lightgrey)
 ![minSdk](https://img.shields.io/badge/minSdk-26-brightgreen)
-![License](https://img.shields.io/badge/license-GPL--3.0-green)
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
 一款工业级的移动端 **HTML 编辑器与全屏预览** 应用(原生 Material 3 风格)。内置 CodeMirror 6 代码编辑、双渲染内核(系统 WebView / GeckoView)、离线资源缓存与完整的文件管理能力。
 
@@ -124,4 +124,20 @@ npm run build        # 产物写入 app/src/main/assets/editor/
 
 ## 许可证
 
-本项目基于 [GPL-3.0](LICENSE) 开源协议发布。
+本项目基于 [Apache-2.0](LICENSE) 开源协议发布。
+
+```
+Copyright 2026 normalwindow
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
