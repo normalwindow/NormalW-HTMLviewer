@@ -173,6 +173,7 @@ class UpdateChecker @javax.inject.Inject constructor() {
         var title = ""
         var link = ""
         var published = ""
+        var updated = ""
         var content = ""
         var inFirstEntry = false
         var done = false
@@ -189,6 +190,7 @@ class UpdateChecker @javax.inject.Inject constructor() {
                         link = parser.getAttributeValue(null, "href") ?: ""
                     }
                     "published" -> if (inFirstEntry) published = parser.nextText()
+                    "updated" -> if (inFirstEntry) updated = parser.nextText()
                     "content" -> if (inFirstEntry) content = parser.nextText()
                 }
                 XmlPullParser.END_TAG -> if (parser.name == "entry" && inFirstEntry) {
@@ -207,7 +209,8 @@ class UpdateChecker @javax.inject.Inject constructor() {
             tagName = tag,
             name = title,
             htmlUrl = link,
-            publishedAt = published,
+            // GitHub Atom 无 published 标签,用 updated 作为发布时间
+            publishedAt = published.ifBlank { updated },
             body = stripHtml(content).ifBlank { "(无更新说明)" },
             isPrerelease = false,
             assets = emptyList(),

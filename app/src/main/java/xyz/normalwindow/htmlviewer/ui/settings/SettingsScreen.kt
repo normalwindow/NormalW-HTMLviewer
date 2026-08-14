@@ -804,18 +804,21 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             val asset = us.info.findAsset(vm.isLiteEdition, vm.primaryAbi)
-                            if (asset != null) {
+                            // Atom 源无资产大小(0)时省略该行
+                            if (asset != null && asset.size > 0) {
                                 Text(
                                     text = stringResource(R.string.update_package_size, formatBytes(asset.size)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Text(
-                                text = stringResource(R.string.update_published, formatUpdateTime(us.info.publishedAt)),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            if (us.info.publishedAt.isNotBlank()) {
+                                Text(
+                                    text = stringResource(R.string.update_published, formatUpdateTime(us.info.publishedAt)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 text = us.info.body,
