@@ -105,12 +105,14 @@ class SettingsViewModel @Inject constructor(
     private val updateStateFlow = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = updateStateFlow.asStateFlow()
 
-    /** 本仓库 GitHub Releases 页面(检查更新来源) */
-    private val repoReleaseUrl: String = "https://api.github.com/repos/normalwindow/NormlW-HTMLviewer/releases/latest"
+    /** 更新检测来源:主源 Atom(github.com 域,国内直连较稳定),备源 API(api.github.com) */
+    private val atomUrl = "https://github.com/normalwindow/NormlW-HTMLviewer/releases.atom"
+    private val downloadBaseUrl = "https://github.com/normalwindow/NormlW-HTMLviewer/releases/download/"
+    private val apiUrl = "https://api.github.com/repos/normalwindow/NormlW-HTMLviewer/releases/latest"
 
     /**
-     * 手动检查更新:查询 GitHub Releases latest,与当前版本比较。
-     * 结果含完整 Release 信息(版本/说明/发布时间/资产大小/下载直链)。
+     * 手动检查更新:主源 GitHub Releases Atom,失败回退官方 API,与当前版本比较。
+     * 结果含完整 Release 信息(版本/说明/发布时间/下载直链)。
      */
     fun checkForUpdate() {
         if (updateStateFlow.value == UpdateUiState.Checking) return
@@ -119,17 +121,24 @@ class SettingsViewModel @Inject constructor(
             val currentVersion = runCatching {
                 context.packageManager.getPackageInfo(context.packageName, 0).versionName
             }.getOrNull() ?: ""
-            updateStateFlow.value = updateChecker.checkLatest(repoReleaseUrl)
-                .fold(
-                    onSuccess = { info ->
-                        if (isNewerVersion(info.tagName, currentVersion)) {
-                            UpdateUiState.Found(info)
-                        } else {
-                            UpdateUiState.UpToDate(currentVersion)
-                        }
-                    },
-                    onFailure = { UpdateUiState.Failed(it.message ?: "network error") }
-                )
+            updateStateFlow.value = runCatching {
+                updateChecker.checkLatestAtom(atomUrl, downloadBaseUrl).getOrThrow()
+            }.recoverCatching {
+                android.util.Log.w("UpdateCheck", "Atom 源失败,回退 API: ${it.message}")
+                updateChecker.checkLatestApi(apiUrl).getOrThrow()
+            }.fold(
+                onSuccess = { info ->
+                    if (isNewerVersion(info.tagName, currentVersion)) {
+                        UpdateUiState.Found(info)
+                    } else {
+                        UpdateUiState.UpToDate(currentVersion)
+                    }
+                },
+                onFailure = {
+                    android.util.Log.e("UpdateCheck", "检查更新失败: ${it.message}", it)
+                    UpdateUiState.Failed(it.message ?: "network error")
+                }
+            )
         }
     }
 

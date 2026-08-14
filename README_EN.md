@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.3-blue">
+  <img src="https://img.shields.io/badge/version-1.1.4-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -95,13 +95,13 @@ Render engines are abstracted behind the `Renderer` interface: preview picks lig
 
 > Release builds use the debug signing key by default for local installs; configure a real keystore in `signingConfigs` before publishing.
 
-## Release (v1.1.3)
+## Release (v1.1.4)
 
 - Artifacts are published on [GitHub Releases](https://github.com/normalwindow/NormlW-HTMLviewer/releases), split by ABI (arm64-v8a / armeabi-v7a / x86 / x86_64). **Download the arm64-v8a package** for most mainstream devices.
 - Two editions:
   - **Full** (`1.1.0`): includes GeckoView compatibility engine, full features (~185 MB)
-  - **Lite** (`1.1.3-lite`): system WebView only, ~99% smaller (~2.2 MB), no compatibility mode
-- Built-in "Check for Updates" in Settings → About detects new releases and opens the download link.
+  - **Lite** (`1.1.4-lite`): system WebView only, ~99% smaller (~2.2 MB), no compatibility mode
+- Built-in "Check for Updates" in Settings → About detects new releases and opens the download link (Atom feed source, works on domestic networks).
 - See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## Rebuilding the CodeMirror bundle

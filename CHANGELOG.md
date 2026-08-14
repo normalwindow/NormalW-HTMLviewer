@@ -2,7 +2,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式,版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-> 说明:发布版本号(当前 `v1.1.3`)与本地 debug 开发版本号序列相互独立、互不通用。
+> 说明:发布版本号(当前 `v1.1.4`)与本地 debug 开发版本号序列相互独立、互不通用。
+
+## [1.1.4] - 2026-08-14
+
+### 修复
+
+- **修复更新检测在真实网络环境失败**:原实现直连 `api.github.com`(GitHub API 域),国内网络直连会被返回 404 导致"检查更新失败"。改为**双源策略**:主源使用 `github.com` 域的 Releases Atom(RSS,国内直连稳定,真机实测通过),失败自动回退官方 API;下载链接按 GitHub 固定 URL 模式构造(`releases/download/{tag}/{asset}`,真机实测可下载);Atom 源无法提供资产大小时对话框自动省略该行
+
+### 发布
+
+- 本次 release 仅发布 **Lite 版**(`1.1.4-lite`,versionCode 6):仅系统 WebView,约 2.2 MB;Full 版仍为 1.1.0
+- 已安装 1.1.3 的用户通过"检查更新"即可收到本版本
 
 ## [1.1.3] - 2026-08-14
 
@@ -94,3 +105,4 @@
 [1.1.1]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.1
 [1.1.2]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.2
 [1.1.3]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.3
+[1.1.4]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.4
