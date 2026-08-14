@@ -29,9 +29,52 @@ interface RendererCallbacks {
 /** 控制台日志级别 */
 enum class ConsoleLevel { DEBUG, LOG, INFO, WARN, ERROR }
 
+/** 控制台参数类型(JS 侧序列化标记,见 ConsoleArg) */
+enum class ConsoleArgType(val tag: String) {
+    STRING("string"),
+    NUMBER("number"),
+    BOOLEAN("boolean"),
+    NULL("null"),
+    UNDEFINED("undefined"),
+    OBJECT("object"),
+    ARRAY("array"),
+    ERROR("error"),
+    FUNCTION("function"),
+    OTHER("other");
+
+    companion object {
+        fun fromTag(tag: String): ConsoleArgType =
+            entries.firstOrNull { it.tag == tag } ?: OTHER
+    }
+}
+
+/**
+ * 控制台单参数(支持多参数 / %s %d 等格式化 / %c 内联样式 / 对象展开)。
+ * 由注入页面的 JS 拦截层序列化而来,渲染层按类型着色并支持样式片段。
+ */
+data class ConsoleArg(
+    val type: ConsoleArgType,
+    /** 紧凑文本(单行,复制与显示用) */
+    val text: String,
+    /** %c 内联样式(CSS 文本,如 "color:red;font-weight:bold") */
+    val style: String? = null,
+    /** 展开后的多行缩进文本(对象/数组/错误,点击展开用) */
+    val pretty: String? = null
+) {
+    /** 是否可点击展开(对象/数组/错误) */
+    val expandable: Boolean
+        get() = type == ConsoleArgType.OBJECT || type == ConsoleArgType.ARRAY || type == ConsoleArgType.ERROR
+}
+
 /** 控制台消息监听(报错/警告抽屉的数据源,回调于主线程) */
 interface RendererConsoleListener {
-    fun onConsoleMessage(level: ConsoleLevel, message: String, lineNumber: Int, source: String?)
+    fun onConsoleMessage(
+        level: ConsoleLevel,
+        message: String,
+        lineNumber: Int,
+        source: String?,
+        args: List<ConsoleArg> = emptyList()
+    )
 }
 
 /** 浏览器式导航/标题回调(浏览器预览页使用) */
@@ -48,27 +91,29 @@ interface RendererScrollListener {
 /** 预设 UA 标识 */
 enum class UserAgentPreset(
     val displayName: String,
+    /** 本地化显示名资源(0 = 无本地化,直接使用 displayName) */
+    @androidx.annotation.StringRes val labelRes: Int = 0,
     val build: (Context) -> String?,
     /** 是否以桌面端分辨率(宽视口)强制渲染 */
     val desktopViewport: Boolean
 ) {
     /** 跟随内核默认 */
-    DEFAULT("跟随内核默认", { null }, false),
+    DEFAULT("跟随内核默认", xyz.normalwindow.htmlviewer.R.string.ua_default, { null }, false),
 
-    ANDROID_CHROME("Android Chrome", { ctx ->
+    ANDROID_CHROME("Android Chrome", 0, { ctx ->
         "Mozilla/5.0 (Linux; Android ${android.os.Build.VERSION.RELEASE}; " +
             "${android.os.Build.MODEL}) AppleWebKit/537.36 (KHTML, like Gecko) " +
             "Chrome/${androidx.webkit.WebViewCompat.getCurrentWebViewPackage(ctx)?.versionName ?: "120.0"}" +
             " Mobile Safari/537.36"
     }, false),
 
-    DESKTOP_CHROME("桌面版 Chrome", { ctx ->
+    DESKTOP_CHROME("桌面版 Chrome", xyz.normalwindow.htmlviewer.R.string.ua_desktop_chrome, { ctx ->
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/${androidx.webkit.WebViewCompat.getCurrentWebViewPackage(ctx)?.versionName ?: "120.0"}" +
             " Safari/537.36"
     }, true),
 
-    IPHONE_SAFARI("iPhone Safari", {
+    IPHONE_SAFARI("iPhone Safari", 0, {
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 " +
             "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
     }, false);
@@ -176,8 +221,69 @@ class WebViewRenderer(
 
     private var consoleListener: RendererConsoleListener? = null
 
+    /** console 拦截桥(懒创建:设置监听器时才注入,避免无监听时暴露接口) */
+    private var consoleCaptureBridge: ConsoleJsBridge? = null
+
     override fun setConsoleListener(listener: RendererConsoleListener?) {
         consoleListener = listener
+        if (listener != null && consoleCaptureBridge == null) {
+            val bridge = ConsoleJsBridge(::handleConsoleJson)
+            consoleCaptureBridge = bridge
+            runCatching { webView.addJavascriptInterface(bridge, "HVConsoleBridge") }
+        }
+    }
+
+    /** JS → Kotlin 控制台桥(注入脚本把结构化日志 JSON 发到这里) */
+    private class ConsoleJsBridge(private val onJson: (String) -> Unit) {
+        @android.webkit.JavascriptInterface
+        fun post(json: String) {
+            onJson(json)
+        }
+    }
+
+    /** 解析 JS 侧序列化的结构化日志并转发监听器(解析失败静默丢弃) */
+    private fun handleConsoleJson(json: String) {
+        val listener = consoleListener ?: return
+        try {
+            val obj = org.json.JSONObject(json)
+            val level = when (obj.optString("level")) {
+                "error" -> ConsoleLevel.ERROR
+                "warn" -> ConsoleLevel.WARN
+                "info" -> ConsoleLevel.INFO
+                "debug" -> ConsoleLevel.DEBUG
+                else -> ConsoleLevel.LOG
+            }
+            val line = obj.optInt("line")
+            val source = obj.optString("source").takeIf { it.isNotBlank() }
+            val args = mutableListOf<ConsoleArg>()
+            obj.optJSONArray("args")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    val a = arr.optJSONObject(i) ?: continue
+                    val text = a.optString("v").take(MAX_ARG_TEXT)
+                    if (text.isEmpty()) continue
+                    args += ConsoleArg(
+                        type = ConsoleArgType.fromTag(a.optString("t")),
+                        text = text,
+                        style = a.optString("s").takeIf { it.isNotBlank() },
+                        pretty = a.optString("pretty").takeIf { it.isNotBlank() }?.take(MAX_ARG_PRETTY)
+                    )
+                }
+            }
+            if (args.isEmpty()) return
+            // 拼接文本兼容旧消费方(复制/兜底显示)
+            val message = args.joinToString(" ") { it.text }.take(500)
+            listener.onConsoleMessage(level, message, line, source, args)
+        } catch (_: Exception) {
+            // 注入脚本异常/JSON 损坏:静默丢弃,不影响页面
+        }
+    }
+
+    /** 注入 console 拦截脚本(幂等;页面每次加载完成后调用) */
+    private fun injectConsoleCapture() {
+        if (consoleCaptureBridge == null) return
+        runCatching {
+            webView.evaluateJavascript(CONSOLE_CAPTURE_JS, null)
+        }
     }
 
     /** 资源本地固化缓存开关 */
@@ -223,6 +329,8 @@ class WebViewRenderer(
                 stateListener?.onNavStateChanged(
                     view.canGoBack(), view.canGoForward()
                 )
+                // 控制台完整拦截:替换 console API 收集多参数/格式化/%c 样式/对象
+                injectConsoleCapture()
                 // 触摸板模式跨页面保持:导航完成后重新注入(带确认重试)
                 if (touchpadEnabled) {
                     injectTouchpadScript(true, attempt = 0)
@@ -474,6 +582,150 @@ class WebViewRenderer(
 
         /** 桌面 UA 主文档下载超时(毫秒) */
         const val DESKTOP_FETCH_TIMEOUT_MS = 10_000
+
+        /** 控制台单参数文本/展开文本长度上限(防大对象撑爆 Binder) */
+        const val MAX_ARG_TEXT = 2_000
+        const val MAX_ARG_PRETTY = 4_000
+
+        /**
+         * 控制台完整拦截脚本(幂等,页面加载完成后注入):
+         * - 替换 console.log/info/warn/error/debug/assert,收集**原始参数**而非
+         *   WebChromeClient 预处理后的单字符串(后者丢失多参数与 %c 样式)
+         * - 支持浏览器式格式化:%s %d %i %f %o %O %c(样式作用于其后文本)与 %% 转义
+         * - 对象/数组序列化为紧凑 JSON(展开用 pretty 版本),循环引用安全
+         * - 错误/函数/元素/符号等有专用表示
+         * - 行号从调用栈尽力提取(注入前页面消息仍由 onConsoleMessage 兜底)
+         * - 序列化后经 HVConsoleBridge.post 发往 Kotlin;不调用原 console 防重复
+         */
+        private val CONSOLE_CAPTURE_JS = """
+            (function () {
+              if (window.__HV_CONSOLE_CAPTURE__) return;
+              window.__HV_CONSOLE_CAPTURE__ = true;
+              function stringify(arg) {
+                if (arg === null) return { t: 'null', v: 'null', pretty: '' };
+                if (arg === undefined) return { t: 'undefined', v: 'undefined', pretty: '' };
+                var t = typeof arg;
+                if (t === 'string') return { t: 'string', v: arg, pretty: '' };
+                if (t === 'number') return { t: 'number', v: String(arg), pretty: '' };
+                if (t === 'boolean') return { t: 'boolean', v: String(arg), pretty: '' };
+                if (t === 'bigint') return { t: 'number', v: String(arg), pretty: '' };
+                if (t === 'function') return { t: 'function', v: 'ƒ ' + (arg.name || 'anonymous') + '()', pretty: '' };
+                if (t === 'symbol') return { t: 'other', v: arg.toString(), pretty: '' };
+                try {
+                  if (arg instanceof Error) {
+                    return { t: 'error', v: arg.name + ': ' + arg.message, pretty: arg.stack || '' };
+                  }
+                  if (typeof HTMLElement !== 'undefined' && arg instanceof HTMLElement) {
+                    return { t: 'other', v: '<' + arg.tagName.toLowerCase() + (arg.id ? '#' + arg.id : '') + '>', pretty: '' };
+                  }
+                  var replacer = function (k, v) {
+                    if (typeof v === 'function') return '[Function]';
+                    if (typeof v === 'undefined') return '[undefined]';
+                    if (typeof v === 'bigint') return v.toString();
+                    if (typeof v === 'symbol') return v.toString();
+                    return v;
+                  };
+                  var compact = JSON.stringify(arg, replacer);
+                  if (compact === undefined) compact = String(arg);
+                  if (compact.length > 2000) compact = compact.slice(0, 2000) + '…';
+                  var pretty = JSON.stringify(arg, replacer, 2);
+                  if (pretty === undefined) pretty = '';
+                  if (pretty.length > 4000) pretty = pretty.slice(0, 4000) + '…';
+                  return { t: Array.isArray(arg) ? 'array' : 'object', v: compact, pretty: pretty };
+                } catch (e) {
+                  // 循环引用等:退化为键名概览,避免 [object Object]
+                  var keyNames;
+                  try { keyNames = Object.keys(arg); } catch (e4) { keyNames = []; }
+                  if (keyNames.length > 0) {
+                    var head = (Array.isArray(arg) ? 'Array' : 'Object') + '(' + keyNames.length + ')';
+                    return { t: Array.isArray(arg) ? 'array' : 'object', v: head + ' {' + keyNames.slice(0, 10).join(', ') + '}', pretty: '' };
+                  }
+                  return { t: 'other', v: String(arg), pretty: '' };
+                }
+              }
+              function fmtAndSend(level, args) {
+                var out = [];
+                var style = null;
+                var buf = '';
+                function flush() {
+                  if (buf) { out.push({ t: 'string', v: buf, s: style }); buf = ''; }
+                }
+                if (args.length > 0 && typeof args[0] === 'string') {
+                  var fmt = args[0];
+                  var ai = 1;
+                  for (var i = 0; i < fmt.length; i++) {
+                    var ch = fmt[i];
+                    if (ch !== '%' || i + 1 >= fmt.length) { buf += ch; continue; }
+                    var spec = fmt[i + 1];
+                    if (spec === '%') { buf += '%'; i++; continue; }
+                    if (ai >= args.length) { buf += ch; continue; }
+                    var arg = args[ai++];
+                    if (spec === 's') { buf += String(arg); }
+                    else if (spec === 'd' || spec === 'i') {
+                      var n = parseInt(arg, 10);
+                      buf += isNaN(n) ? 'NaN' : String(n);
+                    }
+                    else if (spec === 'f') {
+                      var f = parseFloat(arg);
+                      buf += isNaN(f) ? 'NaN' : String(f);
+                    }
+                    else if (spec === 'o' || spec === 'O') {
+                      flush();
+                      var sv = stringify(arg);
+                      out.push({ t: sv.t, v: sv.v, s: style, pretty: sv.pretty });
+                    }
+                    else if (spec === 'c') {
+                      flush();
+                      style = String(arg);
+                    }
+                    else { buf += ch; continue; }
+                    i++;
+                  }
+                  flush();
+                  for (; ai < args.length; ai++) {
+                    var sv2 = stringify(args[ai]);
+                    out.push({ t: sv2.t, v: sv2.v, s: null, pretty: sv2.pretty });
+                  }
+                } else {
+                  for (var j = 0; j < args.length; j++) {
+                    var sv3 = stringify(args[j]);
+                    out.push({ t: sv3.t, v: sv3.v, s: null, pretty: sv3.pretty });
+                  }
+                }
+                if (out.length === 0) return;
+                var line = 0;
+                try {
+                  var st = new Error().stack || '';
+                  var lines = st.split('\n');
+                  for (var k = 1; k < lines.length; k++) {
+                    if (lines[k].indexOf('fmtAndSend') >= 0) continue;
+                    var m = lines[k].match(/:(\d+)(?::\d+)?\)?$/);
+                    if (m) { line = parseInt(m[1]); break; }
+                  }
+                } catch (e2) {}
+                var payload = JSON.stringify({ level: level, args: out, line: line, source: location.href });
+                try { window.HVConsoleBridge.post(payload); } catch (e3) {}
+              }
+              function wrap(name) {
+                var orig = console[name];
+                if (typeof orig !== 'function') return;
+                console[name] = function () {
+                  fmtAndSend(name, Array.prototype.slice.call(arguments));
+                };
+              }
+              wrap('log'); wrap('info'); wrap('warn'); wrap('error'); wrap('debug');
+              var origAssert = console.assert;
+              if (typeof origAssert === 'function') {
+                console.assert = function (cond) {
+                  if (!cond) {
+                    var rest = Array.prototype.slice.call(arguments, 1);
+                    if (rest.length === 0) rest = ['Assertion failed'];
+                    fmtAndSend('error', rest);
+                  }
+                };
+              }
+            })();
+        """.trimIndent()
 
         /**
          * 触摸板模式注入脚本(幂等:可反复开启/关闭,由 __HV_TP_CLEANUP__ 完整拆卸),

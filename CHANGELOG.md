@@ -2,7 +2,29 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式,版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-> 说明:发布版本号(当前 `v1.0.0`)与本地 debug 开发版本号序列相互独立、互不通用。
+> 说明:发布版本号(当前 `v1.1.0`)与本地 debug 开发版本号序列相互独立、互不通用。
+
+## [1.1.0] - 2026-08-14
+
+### 新增
+
+- **控制台样式加强**:注入 JS 完整拦截 console API,支持多参数、`%s/%d/%i/%f/%o/%O` 格式化、`%c` 内联样式(颜色/背景/粗体/斜体/下划线)与对象点击展开(对象/数组/错误/函数/循环引用安全);左侧级别标签改为彩色胶囊(错误=红、警告=深橙、信息=主题色、日志=灰、调试=主题色容器),区分度更强;控制台级别与角标颜色更多跟随主题色
+- **8 种 Material3 配色方案**:设置-外观新增"配色方案",可选 TonalSpot / Neutral / Vibrant / Expressive / Rainbow / FruitSalad / Monochrome / Fidelity(基于 Google material-color-utilities 算法,种子色=自定义主题色或壁纸主色),选择后整套界面配色随主题色变化,即时生效
+- **文件/文件夹导入**:文件页"更多"菜单新增"导入文件"(系统文档选择器,支持多选)与"导入文件夹"(递归复制整棵目录树),同名自动去重,无需存储权限
+- **语言选择**:新增简体中文 / English / 跟随系统三档,设置中切换后重建 Activity 即时生效;新增完整英文资源包
+- **关于页面**:设置-关于点击"应用版本"进入,展示应用图标、版本号、简介、GitHub 仓库(点击外部浏览器打开)、开源许可与技术栈
+
+### 变更
+
+- 版本号升级至 1.1.0(versionCode 2)
+- 新增依赖:material-kolor 2.1.1(色调方案算法)、androidx.documentfile 1.0.1(SAF 导入)
+
+### 修复
+
+- 修复 release 包启动瞬间闪退:MainActivity.attachBaseContext 阶段 `Activity.application` 尚未赋值(为 null),强制转换 `HTMLViewerApp` 抛出 NPE;改为通过 `newBase.applicationContext` 获取应用实例(模拟器 API 36 复现并验证)
+- 修复点击设置-关于"应用版本"闪退:AboutScreen 用 `painterResource` 加载自适应图标(adaptive-icon XML)不支持,改为前景 vector + 主题色背景合成 Logo
+- 设置页"默认 UA 标识"/"语言"下拉菜单改为右对齐(自定义 Popup 实现,`IntrinsicSize.Min` 避免菜单撑满锚点宽度);语言切换后等菜单收起再重建 Activity,不再出现菜单残留在窗口过渡中的问题
+- 默认 UA 标识在英文界面下完整翻译(跟随内核默认→Follow engine default、桌面版 Chrome→Desktop Chrome)
 
 ## [1.0.0] - 2026-08-11
 
@@ -25,4 +47,5 @@
 - 按 ABI 拆分 Release 包(arm64-v8a / armeabi-v7a / x86 / x86_64),Release 默认使用 debug 签名,正式上架需替换为正式 keystore
 - 两种发行版同步发布:**Full 版**(含 GeckoView 兼容内核,约 185 MB)与 **Lite 版**(仅系统 WebView,约 2.2 MB,体积小约 99%)
 
-[1.0.0]: https://github.com/normalwindow/NW-HTMLviewer/releases/tag/v1.0.0
+[1.0.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.0.0
+[1.1.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.0

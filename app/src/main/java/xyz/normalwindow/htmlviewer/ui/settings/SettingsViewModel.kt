@@ -23,6 +23,8 @@ import xyz.normalwindow.htmlviewer.data.cache.ResourceCache
 import xyz.normalwindow.htmlviewer.data.debug.AppLog
 import xyz.normalwindow.htmlviewer.data.debug.LogExporter
 import xyz.normalwindow.htmlviewer.data.file.FileRootProvider
+import xyz.normalwindow.htmlviewer.data.settings.AppLanguage
+import xyz.normalwindow.htmlviewer.data.settings.ColorStyle
 import xyz.normalwindow.htmlviewer.data.settings.EngineType
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
 import xyz.normalwindow.htmlviewer.data.settings.ThemeMode
@@ -57,6 +59,10 @@ data class SettingsUiState(
     val gridView: Boolean = false,
     /** 自定义主题色种子 ARGB(可空) */
     val customColorSeed: Long? = null,
+    /** 配色方案(8 种 Material3 色调方案) */
+    val colorStyle: ColorStyle = ColorStyle.SYSTEM,
+    /** 应用界面语言 */
+    val language: AppLanguage = AppLanguage.SYSTEM,
     /** 系统 WebView 包版本(如 135.0.7049.38) */
     val webViewVersion: String = "",
     /** GeckoView 版本号(从 BuildConfig 固定值读取) */
@@ -116,6 +122,8 @@ class SettingsViewModel @Inject constructor(
             debugMode = prefs.debugMode,
             gridView = prefs.gridView,
             customColorSeed = prefs.customColorSeed,
+            colorStyle = prefs.colorStyle,
+            language = prefs.language,
             webViewVersion = runCatching {
                 WebViewCompat.getCurrentWebViewPackage(context)?.versionName
             }.getOrNull() ?: "",
@@ -299,6 +307,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setCustomColorSeed(seed: Long?) = viewModelScope.launch {
         settingsRepository.setCustomColorSeed(seed)
+    }
+
+    fun setColorStyle(style: ColorStyle) = viewModelScope.launch {
+        settingsRepository.setColorStyle(style)
+    }
+
+    fun setLanguage(language: AppLanguage) = viewModelScope.launch {
+        settingsRepository.setLanguage(language)
     }
 
     private companion object {

@@ -13,6 +13,8 @@
     <string name="action_new_dir">新建文件夹</string>
     <string name="action_from_template">从模板新建</string>
     <string name="action_refresh">刷新</string>
+    <string name="action_import_files">导入文件</string>
+    <string name="action_import_folder">导入文件夹</string>
     <string name="action_search">搜索</string>
     <string name="action_close_search">关闭搜索</string>
     <string name="action_view_list">列表视图</string>
@@ -74,6 +76,8 @@
     <string name="snack_fav_added">已加入收藏</string>
     <string name="snack_fav_removed">已取消收藏</string>
     <string name="snack_trash_empty">没有可撤销的删除</string>
+    <string name="snack_imported">已导入 %1$d 个文件</string>
+    <string name="snack_error_import">导入失败,请重试</string>
     <string name="snack_error_create">创建失败</string>
     <string name="snack_error_rename">重命名失败</string>
     <string name="snack_error_delete">删除失败</string>
@@ -123,6 +127,11 @@
     <string name="settings_default_view_desc">文件页启动时使用网格布局而非列表</string>
     <string name="settings_custom_color">自定义主题色</string>
     <string name="settings_custom_color_desc">选择喜欢的颜色作为主色调（优先于动态取色）；"◌" 表示跟随系统</string>
+    <string name="settings_color_scheme">配色方案</string>
+    <string name="settings_color_scheme_desc">Material3 色调方案,让更多界面元素随主题色变化（优先于动态取色与自定义主题色）</string>
+    <string name="color_scheme_system">跟随动态取色</string>
+    <string name="settings_language">语言</string>
+    <string name="language_system">跟随系统</string>
     <string name="settings_section_editor">编辑器</string>
     <string name="settings_font_size">字号</string>
     <string name="settings_tab_size">缩进宽度</string>
@@ -134,6 +143,8 @@
     <string name="settings_click_opens_browser">浏览器预览</string>
     <string name="settings_click_opens_editor">代码编辑器</string>
     <string name="settings_default_ua">默认 UA 标识</string>
+    <string name="ua_default">跟随内核默认</string>
+    <string name="ua_desktop_chrome">桌面版 Chrome</string>
     <string name="settings_browser_js">JavaScript</string>
     <string name="settings_browser_js_desc">浏览器预览页的 JavaScript 开关</string>
     <string name="settings_browser_console">浏览器控制台</string>
@@ -174,6 +185,13 @@
     <string name="snack_group_deleted">已删除分组</string>
     <string name="settings_section_about">关于</string>
     <string name="settings_about_version">应用版本</string>
+    <string name="about_title">关于</string>
+    <string name="about_description">一款工业级的移动端 HTML 编辑器与全屏预览应用,原生 Material 3 风格,内置 CodeMirror 6 代码编辑与双渲染内核</string>
+    <string name="about_github">GitHub 仓库</string>
+    <string name="about_license">开源许可证</string>
+    <string name="about_license_value">Apache License 2.0</string>
+    <string name="about_tech_stack">技术栈</string>
+    <string name="about_tech_value">Jetpack Compose · CodeMirror 6 · WebView / GeckoView</string>
     <string name="action_attachments">附加文件</string>
     <string name="dialog_attachments_title">附加文件 - %1$s</string>
     <string name="attachments_empty">暂无附加文件。可新建 JS/CSS 资源,并与本页面联动。</string>

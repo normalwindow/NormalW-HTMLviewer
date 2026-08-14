@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
@@ -61,10 +62,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -72,8 +81,11 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import xyz.normalwindow.htmlviewer.R
+import xyz.normalwindow.htmlviewer.render.ConsoleArg
+import xyz.normalwindow.htmlviewer.render.ConsoleArgType
 import xyz.normalwindow.htmlviewer.render.ConsoleLevel
 import xyz.normalwindow.htmlviewer.render.UserAgentPreset
+import xyz.normalwindow.htmlviewer.ui.components.uaPresetLabel
 
 /**
  * 浏览器预览页:页面完全可交互(滚动/链接/表单),
@@ -111,9 +123,18 @@ fun BrowserScreen(
         ).show()
     }
 
-    /** 格式化单条日志(复制用,级别用英文名) */
+    /** 格式化单条日志(复制用,级别用英文名;参数取展开文本) */
     fun formatEntry(entry: ConsoleEntry): String = buildString {
-        append("[").append(entry.level.name).append("] ").append(entry.message)
+        append("[").append(entry.level.name).append("] ")
+        if (entry.args.isEmpty()) {
+            append(entry.message)
+        } else {
+            append(
+                entry.args.joinToString(" ") { arg ->
+                    if (!arg.pretty.isNullOrBlank()) arg.pretty else arg.text
+                }
+            )
+        }
         if (!entry.source.isNullOrBlank()) {
             append("\n  ").append(entry.source).append(":").append(entry.lineNumber)
         }
@@ -260,10 +281,11 @@ fun BrowserScreen(
                                     badge = {
                                         val peak = state.consolePeakLevel
                                         if (peak != null) {
+                                            val (badgeColor, badgeContent) = consoleLevelColors(peak)
                                             Badge(
-                                                containerColor = consoleLevelColor(peak),
-                                                // 数字用白色:在红/橙/蓝等彩色圆点上保持可读
-                                                contentColor = Color.White
+                                                containerColor = badgeColor,
+                                                // 数字用内容色:在彩色圆点上保持可读
+                                                contentColor = badgeContent
                                             ) {
                                                 Text(
                                                     if (state.consoleUnread > 99) "99+" else state.consoleUnread.toString()
@@ -297,7 +319,7 @@ fun BrowserScreen(
                                     )
                                     UserAgentPreset.entries.forEach { preset ->
                                         DropdownMenuItem(
-                                            text = { Text(preset.displayName) },
+                                            text = { Text(uaPresetLabel(preset)) },
                                             onClick = {
                                                 uaMenu = false
                                                 vm.setUaPreset(preset)
@@ -462,21 +484,22 @@ fun BrowserScreen(
     }
 }
 
-/** 控制台级别颜色(icon 圆点与日志行共用;ERROR 最严重,优先级最高) */
+/** 控制台级别配色(标签/角标共用):返回 (容器色, 内容色) 对,更多元素随主题色变化 */
 @Composable
-private fun consoleLevelColor(level: ConsoleLevel): Color = when (level) {
-    ConsoleLevel.ERROR -> MaterialTheme.colorScheme.error
-    ConsoleLevel.WARN -> Color(0xFFF57C00)
-    ConsoleLevel.INFO -> MaterialTheme.colorScheme.primary
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
+private fun consoleLevelColors(level: ConsoleLevel): Pair<Color, Color> = when (level) {
+    ConsoleLevel.ERROR -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
+    ConsoleLevel.WARN -> Color(0xFFE65100) to Color.White
+    ConsoleLevel.INFO -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+    ConsoleLevel.LOG -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    ConsoleLevel.DEBUG -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
 }
 
-/** 控制台单条日志行(按级别着色;长按复制单条) */
+/** 控制台单条日志行:左侧彩色级别胶囊 + 多参数/样式消息;长按复制单条 */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ConsoleEntryRow(entry: ConsoleEntry, onCopy: (ConsoleEntry) -> Unit) {
     val label = consoleLevelLabel(entry.level)
-    val labelColor = consoleLevelColor(entry.level)
+    val (labelColor, labelContent) = consoleLevelColors(entry.level)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -486,28 +509,177 @@ private fun ConsoleEntryRow(entry: ConsoleEntry, onCopy: (ConsoleEntry) -> Unit)
             )
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = labelColor,
-                modifier = Modifier.width(44.dp)
-            )
-            Text(
-                text = entry.message,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f)
-            )
+        Row(verticalAlignment = Alignment.Top) {
+            // 级别标签:彩色胶囊(底色 + 反色文字),强化种类区分度
+            Box(
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(labelColor)
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = labelContent,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            if (entry.args.isEmpty()) {
+                // 旧式单文本消息(Gecko 报错/注入前日志等)
+                Text(
+                    text = entry.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                Column(modifier = Modifier.weight(1f)) {
+                    ConsoleArgsText(entry.args)
+                }
+            }
         }
         if (!entry.source.isNullOrBlank()) {
             Text(
                 text = "${entry.source}:${entry.lineNumber}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 44.dp)
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
         }
     }
+}
+
+/** 多参数消息渲染:按类型着色,支持 %c 内联样式与对象点击展开 */
+@Composable
+private fun ConsoleArgsText(args: List<ConsoleArg>) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        args.forEachIndexed { index, arg ->
+            if (index > 0) Spacer(Modifier.width(6.dp))
+            ConsoleArgView(arg)
+        }
+    }
+}
+
+@Composable
+private fun ConsoleArgView(arg: ConsoleArg) {
+    // 类型默认色(无 %c 样式时;对象/数字等使用代码风格配色)
+    val baseColor = when (arg.type) {
+        ConsoleArgType.NUMBER, ConsoleArgType.BOOLEAN -> MaterialTheme.colorScheme.primary
+        ConsoleArgType.STRING -> MaterialTheme.colorScheme.onSurface
+        ConsoleArgType.NULL, ConsoleArgType.UNDEFINED -> MaterialTheme.colorScheme.onSurfaceVariant
+        ConsoleArgType.OBJECT, ConsoleArgType.ARRAY, ConsoleArgType.ERROR ->
+            MaterialTheme.colorScheme.tertiary
+        ConsoleArgType.FUNCTION -> MaterialTheme.colorScheme.secondary
+        ConsoleArgType.OTHER -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    // %c 内联样式优先(颜色/背景/粗细/斜体/下划线)
+    val cssStyle = arg.style?.let { cssToTextStyle(it, baseColor) }
+    val mono = arg.type == ConsoleArgType.NUMBER || arg.type == ConsoleArgType.BOOLEAN ||
+        arg.type == ConsoleArgType.OBJECT || arg.type == ConsoleArgType.ARRAY ||
+        arg.type == ConsoleArgType.ERROR
+    val textStyle = (cssStyle ?: MaterialTheme.typography.bodySmall).let { base ->
+        base.copy(
+            fontFamily = if (mono) FontFamily.Monospace else base.fontFamily
+        )
+    }
+
+    if (arg.expandable && !arg.pretty.isNullOrBlank()) {
+        var expanded by remember { mutableStateOf(false) }
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 2.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = if (expanded) "▾" else "▸",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    text = arg.text,
+                    style = textStyle,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (expanded) {
+                Text(
+                    text = arg.pretty,
+                    style = textStyle.copy(fontSize = 11.sp, lineHeight = 15.sp),
+                    modifier = Modifier.padding(start = 14.dp, top = 2.dp, bottom = 2.dp)
+                )
+            }
+        }
+    } else {
+        Text(
+            text = arg.text,
+            style = textStyle,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/** CSS 内联样式 → Compose TextStyle(仅取受支持字段,解析失败保持默认) */
+private fun cssToTextStyle(css: String, fallbackColor: Color): TextStyle {
+    var parsedColor: Color? = null
+    var parsedBackground: Color? = null
+    var fontWeight: FontWeight? = null
+    var fontStyle: FontStyle? = null
+    var textDecoration: TextDecoration? = null
+    css.split(";").forEach { decl ->
+        val idx = decl.indexOf(':')
+        if (idx <= 0) return@forEach
+        val key = decl.substring(0, idx).trim().lowercase()
+        val value = decl.substring(idx + 1).trim()
+        when (key) {
+            "color" -> parsedColor = parseCssColor(value)
+            "background", "background-color" -> parsedBackground = parseCssColor(value)
+            "font-weight" -> fontWeight = when (value.lowercase()) {
+                "bold", "bolder", "700", "800", "900" -> FontWeight.Bold
+                "600", "500" -> FontWeight.SemiBold
+                "normal", "400" -> FontWeight.Normal
+                "lighter", "300", "200", "100" -> FontWeight.Light
+                else -> null
+            }
+            "font-style" -> fontStyle = when (value.lowercase()) {
+                "italic", "oblique" -> FontStyle.Italic
+                else -> null
+            }
+            "text-decoration" -> textDecoration = when (value.lowercase()) {
+                "underline" -> TextDecoration.Underline
+                "line-through" -> TextDecoration.LineThrough
+                "underline line-through" -> TextDecoration.combine(
+                    listOf(TextDecoration.Underline, TextDecoration.LineThrough)
+                )
+                else -> null
+            }
+        }
+    }
+    return TextStyle(
+        color = parsedColor ?: fallbackColor,
+        background = parsedBackground ?: Color.Unspecified,
+        fontWeight = fontWeight,
+        fontStyle = fontStyle,
+        textDecoration = textDecoration
+    )
+}
+
+/** CSS 颜色解析:hex(#RGB/#RRGGBB/#AARRGGBB/#RRGGBBAA)/ rgb()/rgba()/命名色 */
+private fun parseCssColor(value: String): Color? {
+    val v = value.trim()
+    // 3/4 位 hex 展开为 6/8 位(android.graphics.Color 不直接支持)
+    if (v.startsWith("#") && (v.length == 4 || v.length == 5)) {
+        val hex = v.substring(1)
+        val expanded = hex.map { "$it$it" }.joinToString("")
+        return runCatching { Color(android.graphics.Color.parseColor("#$expanded")) }.getOrNull()
+    }
+    return runCatching { Color(android.graphics.Color.parseColor(v)) }.getOrNull()
 }
 
 /** 级别中文标签(抽屉显示与复制共用) */

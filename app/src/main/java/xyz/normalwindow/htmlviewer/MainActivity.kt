@@ -1,6 +1,7 @@
 package xyz.normalwindow.htmlviewer
 
 import android.app.Activity
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,11 +16,13 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import xyz.normalwindow.htmlviewer.data.settings.AppLanguage
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
 import xyz.normalwindow.htmlviewer.data.settings.ThemeMode
 import xyz.normalwindow.htmlviewer.data.settings.UserPreferences
 import xyz.normalwindow.htmlviewer.ui.navigation.AppNavHost
 import xyz.normalwindow.htmlviewer.ui.theme.HTMLViewerTheme
+import xyz.normalwindow.htmlviewer.util.LocaleManager
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -27,6 +30,18 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    /** 应用内语言切换:把所选语言套到资源 Configuration 上(跟随系统时原样返回)。
+     * 注意:attachBaseContext 阶段 Activity.application 尚未赋值(为 null),
+     * 必须通过 newBase.applicationContext 取 Application 实例。 */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(
+            LocaleManager.apply(
+                newBase,
+                (newBase.applicationContext as? HTMLViewerApp)?.currentLanguage ?: AppLanguage.SYSTEM
+            )
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -51,7 +66,8 @@ class MainActivity : ComponentActivity() {
             HTMLViewerTheme(
                 darkTheme = darkTheme,
                 dynamicColor = prefs.dynamicColor,
-                seedColor = prefs.customColorSeed?.let { Color(it) }
+                seedColor = prefs.customColorSeed?.let { Color(it) },
+                colorStyle = prefs.colorStyle
             ) {
                 AppNavHost()
             }

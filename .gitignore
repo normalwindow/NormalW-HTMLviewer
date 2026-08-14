@@ -34,3 +34,4 @@ editor-builder/node_modules/
 AppLog/
 *.log
 .reasonix/
+tool/

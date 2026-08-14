@@ -1,6 +1,10 @@
 package xyz.normalwindow.htmlviewer.data.file
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
@@ -364,4 +368,86 @@ class FileRepository @Inject constructor(
         }
         return candidate
     }
+
+    // ---------- 文件/文件夹导入(SAF) ----------
+
+    /** 从 SAF uri 导入单个文件到目标目录(同名自动去重),返回新文件 */
+    suspend fun importFile(context: Context, uri: Uri, destDir: File): Result<File> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                destDir.mkdirs()
+                val resolver = context.contentResolver
+                val name = DocumentFile.fromSingleUri(context, uri)?.name
+                    ?: queryDisplayName(resolver, uri)
+                    ?: "import_${System.currentTimeMillis()}"
+                val target = File(destDir, uniqueName(destDir, name))
+                resolver.openInputStream(uri)?.use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                } ?: error("无法读取: $name")
+                AppLog.d("Import", "导入文件: ${target.absolutePath}")
+                target
+            }.onFailure {
+                AppLog.e("Import", "导入失败: $uri", it)
+            }
+        }
+
+    /** 从 SAF 导入多个文件到目标目录,返回成功数量 */
+    suspend fun importFiles(context: Context, uris: List<Uri>, destDir: File): Result<Int> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                var ok = 0
+                uris.forEach { uri ->
+                    if (importFile(context, uri, destDir).isSuccess) ok++
+                }
+                ok
+            }
+        }
+
+    /** 从 SAF 树 uri 递归导入整个文件夹到目标目录,返回导入文件数量 */
+    suspend fun importFolder(context: Context, uri: Uri, destDir: File): Result<Int> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                destDir.mkdirs()
+                val tree = DocumentFile.fromTreeUri(context, uri) ?: error("无法访问目录")
+                val dirName = tree.name?.takeIf { it.isNotBlank() } ?: "imported"
+                val targetDir = File(destDir, uniqueName(destDir, dirName, isDir = true))
+                check(targetDir.mkdirs()) { "创建目录失败: $dirName" }
+                var count = 0
+                tree.listFiles().forEach { doc ->
+                    count += copyDocumentFile(context, doc, targetDir)
+                }
+                AppLog.d("Import", "导入文件夹: ${targetDir.absolutePath} ($count 个文件)")
+                count
+            }.onFailure {
+                AppLog.e("Import", "导入文件夹失败: $uri", it)
+            }
+        }
+
+    /** 递归复制 SAF 文档到本地目录,返回复制的文件数 */
+    private fun copyDocumentFile(context: Context, doc: DocumentFile, destDir: File): Int {
+        if (doc.isDirectory) {
+            val sub = File(destDir, uniqueName(destDir, doc.name ?: "folder", isDir = true))
+            if (!sub.mkdirs()) return 0
+            var count = 0
+            doc.listFiles().forEach { child -> count += copyDocumentFile(context, child, sub) }
+            return count
+        }
+        if (!doc.isFile || !doc.canRead()) return 0
+        val name = doc.name ?: return 0
+        val target = File(destDir, uniqueName(destDir, name))
+        return runCatching {
+            context.contentResolver.openInputStream(doc.uri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+            1
+        }.getOrDefault(0)
+    }
+
+    /** 从 ContentResolver 查询显示名(SAF uri 无 DocumentFile 元数据时兜底) */
+    private fun queryDisplayName(resolver: android.content.ContentResolver, uri: Uri): String? =
+        runCatching {
+            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull()
 }

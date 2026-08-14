@@ -48,6 +48,10 @@ data class UserPreferences(
     val gridView: Boolean = false,
     /** 自定义主题色种子 ARGB(可空,null=跟随动态取色/默认) */
     val customColorSeed: Long? = null,
+    /** 配色方案(8 种 Material3 色调方案,见 ColorStyle) */
+    val colorStyle: ColorStyle = ColorStyle.SYSTEM,
+    /** 应用界面语言(跟随系统 / 简体中文 / English) */
+    val language: AppLanguage = AppLanguage.SYSTEM,
     /** SAF 授权的外部目录树 URI(可空,Phase 3 使用) */
     val externalRootUri: String? = null
 )
@@ -74,6 +78,8 @@ class SettingsRepository @Inject constructor(
         val CLICK_OPENS_PREVIEW = booleanPreferencesKey("click_opens_preview")
         val GRID_VIEW = booleanPreferencesKey("grid_view")
         val CUSTOM_COLOR_SEED = longPreferencesKey("custom_color_seed")
+        val COLOR_STYLE = stringPreferencesKey("color_style")
+        val LANGUAGE = stringPreferencesKey("language")
         val EXTERNAL_ROOT_URI = stringPreferencesKey("external_root_uri")
     }
 
@@ -98,6 +104,8 @@ class SettingsRepository @Inject constructor(
             clickOpensPreview = p[Keys.CLICK_OPENS_PREVIEW] ?: true,
             gridView = p[Keys.GRID_VIEW] ?: false,
             customColorSeed = p[Keys.CUSTOM_COLOR_SEED],
+            colorStyle = ColorStyle.fromStorage(p[Keys.COLOR_STYLE] ?: ColorStyle.SYSTEM.storageValue),
+            language = AppLanguage.fromStorage(p[Keys.LANGUAGE] ?: AppLanguage.SYSTEM.storageValue),
             externalRootUri = p[Keys.EXTERNAL_ROOT_URI]
         )
     }
@@ -171,6 +179,14 @@ class SettingsRepository @Inject constructor(
             if (seed == null) p.remove(Keys.CUSTOM_COLOR_SEED)
             else p[Keys.CUSTOM_COLOR_SEED] = seed
         }
+    }
+
+    suspend fun setColorStyle(style: ColorStyle) {
+        context.settingsDataStore.edit { it[Keys.COLOR_STYLE] = style.storageValue }
+    }
+
+    suspend fun setLanguage(language: AppLanguage) {
+        context.settingsDataStore.edit { it[Keys.LANGUAGE] = language.storageValue }
     }
 
     suspend fun setExternalRootUri(uri: String?) {

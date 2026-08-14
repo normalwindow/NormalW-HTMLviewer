@@ -15,6 +15,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import xyz.normalwindow.htmlviewer.data.file.FileRepository
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
+import xyz.normalwindow.htmlviewer.render.ConsoleArg
 import xyz.normalwindow.htmlviewer.render.ConsoleLevel
 import xyz.normalwindow.htmlviewer.render.Renderer
 import xyz.normalwindow.htmlviewer.render.RendererCallbacks
@@ -32,7 +33,9 @@ data class ConsoleEntry(
     val message: String,
     val lineNumber: Int,
     val source: String?,
-    val time: Long
+    val time: Long,
+    /** 结构化参数(多参数/%c 样式/对象展开);空 = 旧式单文本消息 */
+    val args: List<ConsoleArg> = emptyList()
 )
 
 /**
@@ -119,8 +122,14 @@ class BrowserViewModel @Inject constructor(
                 }
             )
             r.setConsoleListener(object : RendererConsoleListener {
-                override fun onConsoleMessage(level: ConsoleLevel, message: String, lineNumber: Int, source: String?) {
-                    appendConsole(level, message, lineNumber, source)
+                override fun onConsoleMessage(
+                    level: ConsoleLevel,
+                    message: String,
+                    lineNumber: Int,
+                    source: String?,
+                    args: List<ConsoleArg>
+                ) {
+                    appendConsole(level, message, lineNumber, source, args)
                 }
             })
             r.setStateListener(object : RendererStateListener {
@@ -211,12 +220,18 @@ class BrowserViewModel @Inject constructor(
     }
 
     /** 追加控制台条目(开关关闭/空消息时忽略;上限 200 条防内存膨胀) */
-    private fun appendConsole(level: ConsoleLevel, message: String, lineNumber: Int, source: String?) {
+    private fun appendConsole(
+        level: ConsoleLevel,
+        message: String,
+        lineNumber: Int,
+        source: String?,
+        args: List<ConsoleArg> = emptyList()
+    ) {
         if (!_state.value.consoleEnabled) return
         val msg = message.trim().take(500)
         if (msg.isEmpty()) return
         _state.update { s ->
-            val entries = (s.consoleEntries + ConsoleEntry(level, msg, lineNumber, source, System.currentTimeMillis()))
+            val entries = (s.consoleEntries + ConsoleEntry(level, msg, lineNumber, source, System.currentTimeMillis(), args))
                 .takeLast(CONSOLE_LIMIT)
             // 圆点颜色取未读中最严重的级别(级别枚举按严重度升序:DEBUG < LOG < INFO < WARN < ERROR)
             val peak = when {

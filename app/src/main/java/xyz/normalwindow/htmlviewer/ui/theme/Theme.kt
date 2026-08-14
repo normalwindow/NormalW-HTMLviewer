@@ -1,5 +1,6 @@
 package xyz.normalwindow.htmlviewer.ui.theme
 
+import android.app.WallpaperManager
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,9 +9,13 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamicColorScheme
+import xyz.normalwindow.htmlviewer.data.settings.ColorStyle
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
@@ -82,6 +87,9 @@ private val DarkColorScheme = darkColorScheme(
 
 /**
  * 全局 Material 3 主题。
+ * - 选定具体配色方案时(colorStyle != SYSTEM):以种子色(自定义主题色优先,
+ *   否则壁纸主色,再退默认靛蓝)经 material-color-utilities 算法生成对应色调方案,
+ *   整套界面(按钮/容器/高亮/控制台等)随主题色变化;
  * - 自定义主题色优先(seedColor != null,用户指定种子色生成配色);
  * - Android 12+ 默认启用动态取色(Material You),跟随壁纸;
  * - 旧系统使用内置靛蓝系配色;
@@ -92,13 +100,25 @@ fun HTMLViewerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     seedColor: Color? = null,
+    colorStyle: ColorStyle = ColorStyle.SYSTEM,
     content: @Composable () -> Unit
 ) {
+    val context = LocalContext.current
+    // 未选自定义主题色时,配色方案使用壁纸主色作为种子(Android 8.1+ 支持,失败退默认色)
+    val wallpaperSeed = remember(context) { wallpaperSeedColor(context) }
     val colorScheme = when {
+        colorStyle != ColorStyle.SYSTEM -> {
+            val seed = seedColor ?: wallpaperSeed ?: DefaultSeedColor
+            dynamicColorScheme(
+                primary = seed,
+                isDark = darkTheme,
+                isAmoled = false,
+                style = colorStyle.paletteStyle()
+            )
+        }
         seedColor != null ->
             if (darkTheme) seedDarkColorScheme(seedColor) else seedLightColorScheme(seedColor)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColorScheme
@@ -110,6 +130,33 @@ fun HTMLViewerTheme(
         typography = Typography,
         content = content
     )
+}
+
+/** 配色方案 → material-color-utilities 色调方案 */
+private fun ColorStyle.paletteStyle(): PaletteStyle = when (this) {
+    ColorStyle.SYSTEM -> PaletteStyle.TonalSpot // 不可达,仅占位
+    ColorStyle.TONAL_SPOT -> PaletteStyle.TonalSpot
+    ColorStyle.NEUTRAL -> PaletteStyle.Neutral
+    ColorStyle.VIBRANT -> PaletteStyle.Vibrant
+    ColorStyle.EXPRESSIVE -> PaletteStyle.Expressive
+    ColorStyle.RAINBOW -> PaletteStyle.Rainbow
+    ColorStyle.FRUIT_SALAD -> PaletteStyle.FruitSalad
+    ColorStyle.MONOCHROME -> PaletteStyle.Monochrome
+    ColorStyle.FIDELITY -> PaletteStyle.Fidelity
+}
+
+/** 未选自定义主题色时的默认种子色(与内置浅色主题主色一致) */
+private val DefaultSeedColor = Color(0xFF4355B9)
+
+/** 壁纸主色(配色方案种子;API 27+ 支持,失败返回 null 由调用方退默认色) */
+private fun wallpaperSeedColor(context: android.content.Context): Color? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return null
+    return runCatching {
+        WallpaperManager.getInstance(context)
+            .getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+            ?.primaryColor
+            ?.let { Color(it.toArgb()) }
+    }.getOrNull()
 }
 
 /** 种子色与目标色混合(fraction=0 保持种子色,1 完全目标色) */

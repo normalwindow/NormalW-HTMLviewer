@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import xyz.normalwindow.htmlviewer.data.db.FileMetaEntity
 import xyz.normalwindow.htmlviewer.data.db.FavoriteGroupEntity
 import xyz.normalwindow.htmlviewer.data.debug.AppLog
@@ -38,7 +40,8 @@ enum class BatchOp { MOVE, COPY }
 enum class SnackKind {
     CREATED_FILE, CREATED_DIR, DELETED, UNDO_DELETED, RENAMED, MOVED, COPIED,
     FAV_ADDED, FAV_REMOVED, SHARED, ERROR_CREATE, ERROR_RENAME, ERROR_DELETE,
-    ERROR_MOVE, ERROR_COPY, ERROR_IO, TRASH_EMPTY, GROUP_CREATED, GROUP_DELETED
+    ERROR_MOVE, ERROR_COPY, ERROR_IO, TRASH_EMPTY, GROUP_CREATED, GROUP_DELETED,
+    IMPORTED, ERROR_IMPORT
 }
 
 sealed interface HomeEvent {
@@ -459,6 +462,38 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             fileRepository.ensureFavoriteInGroup(path, groupId)
             _events.send(HomeEvent.Snackbar(SnackKind.FAV_ADDED))
+        }
+    }
+
+    // ---------- 文件/文件夹导入(SAF) ----------
+
+    /** 导入多个文件到当前目录(成功后刷新并提示数量) */
+    fun importFiles(uris: List<android.net.Uri>) {
+        val dir = _state.value.currentDir ?: return
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                fileRepository.importFiles(context, uris, dir).getOrDefault(0)
+            }
+            _events.send(
+                if (ok > 0) HomeEvent.Snackbar(SnackKind.IMPORTED, ok)
+                else HomeEvent.Snackbar(SnackKind.ERROR_IMPORT)
+            )
+            loadDir(dir)
+        }
+    }
+
+    /** 导入整个文件夹(递归)到当前目录 */
+    fun importFolder(uri: android.net.Uri) {
+        val dir = _state.value.currentDir ?: return
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                fileRepository.importFolder(context, uri, dir).getOrDefault(0)
+            }
+            _events.send(
+                if (ok > 0) HomeEvent.Snackbar(SnackKind.IMPORTED, ok)
+                else HomeEvent.Snackbar(SnackKind.ERROR_IMPORT)
+            )
+            loadDir(dir)
         }
     }
 

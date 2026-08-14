@@ -16,9 +16,9 @@ android {
         applicationId = "xyz.normalwindow.htmlviewer"
         minSdk = 26
         targetSdk = 36
-        // 发布版本(v1.0.0):与本地 debug 开发版本号序列独立,互不通用
-        versionCode = 1
-        versionName = "1.0.0"
+        // 发布版本(v1.1.0):与本地 debug 开发版本号序列独立,互不通用
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -118,6 +118,9 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
+    // SAF 文件/文件夹导入
+    implementation(libs.androidx.documentfile)
+
     // Network / Image
     implementation(libs.okhttp)
     implementation(libs.coil.compose)
@@ -125,6 +128,9 @@ dependencies {
     // GeckoView 兼容模式内核 + WebView 版本信息(仅 full 变体,体积约 100MB+)
     "fullImplementation"(libs.geckoview)
     implementation(libs.androidx.webkit)
+
+    // Material3 动态配色(8 种色调方案:TonalSpot/Neutral/Vibrant 等)
+    implementation(libs.material.kolor)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

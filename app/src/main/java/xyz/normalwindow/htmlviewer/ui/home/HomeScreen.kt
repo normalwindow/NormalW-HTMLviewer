@@ -1,12 +1,16 @@
 package xyz.normalwindow.htmlviewer.ui.home
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DriveFolderUpload
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.History
@@ -49,11 +53,24 @@ import xyz.normalwindow.htmlviewer.ui.settings.SettingsScreen
 fun HomeScreen(
     vm: HomeViewModel,
     onOpenBrowser: (String, String) -> Unit,
-    onOpenEditor: (String, String) -> Unit
+    onOpenEditor: (String, String) -> Unit,
+    onOpenAbout: () -> Unit = {}
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    // SAF 文件/文件夹导入(系统文档选择器,无需存储权限)
+    val importFilesLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isNotEmpty()) vm.importFiles(uris)
+    }
+    val importFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) vm.importFolder(uri)
+    }
 
     LaunchedEffect(vm) {
         vm.events.collect { event ->
@@ -76,7 +93,14 @@ fun HomeScreen(
     }
 
     Scaffold(
-        topBar = { HomeTopBar(state = state, vm = vm) },
+        topBar = {
+            HomeTopBar(
+                state = state,
+                vm = vm,
+                onImportFiles = { importFilesLauncher.launch(arrayOf("*/*")) },
+                onImportFolder = { importFolderLauncher.launch(null) }
+            )
+        },
         bottomBar = {
             NavigationBar {
                 HomeTab.entries.forEach { tab ->
@@ -121,7 +145,7 @@ fun HomeScreen(
                 HomeTab.FILES -> FilesTab(vm, onOpenBrowser, onOpenEditor)
                 HomeTab.RECENT, HomeTab.FAVORITES ->
                     RecentFavoritesTab(state.tab, vm, onOpenBrowser, onOpenEditor)
-                HomeTab.SETTINGS -> SettingsScreen()
+                HomeTab.SETTINGS -> SettingsScreen(onOpenAbout = onOpenAbout)
             }
         }
     }
@@ -131,7 +155,9 @@ fun HomeScreen(
 @Composable
 private fun HomeTopBar(
     state: HomeUiState,
-    vm: HomeViewModel
+    vm: HomeViewModel,
+    onImportFiles: () -> Unit,
+    onImportFolder: () -> Unit
 ) {
     var showMoreMenu by remember { mutableStateOf(false) }
 
@@ -189,6 +215,22 @@ private fun HomeTopBar(
                     Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                 }
                 DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_import_files)) },
+                        onClick = {
+                            showMoreMenu = false
+                            onImportFiles()
+                        },
+                        leadingIcon = { Icon(Icons.Filled.FileDownload, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_import_folder)) },
+                        onClick = {
+                            showMoreMenu = false
+                            onImportFolder()
+                        },
+                        leadingIcon = { Icon(Icons.Filled.DriveFolderUpload, null) }
+                    )
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -248,6 +290,8 @@ private fun Context.string(kind: SnackKind, count: Int): String {
         SnackKind.TRASH_EMPTY -> R.string.snack_trash_empty
         SnackKind.GROUP_CREATED -> R.string.snack_group_created
         SnackKind.GROUP_DELETED -> R.string.snack_group_deleted
+        SnackKind.IMPORTED -> R.string.snack_imported
+        SnackKind.ERROR_IMPORT -> R.string.snack_error_import
     }
     // 始终传 count:含 %1$d 占位符的资源正常格式化,无占位符的资源会忽略多余参数,
     // 避免 count=0 时走无参分支而把 "已删除 %1$d 项" 之类字面量直接显示出来

@@ -15,6 +15,7 @@ import androidx.navigation.navArgument
 import xyz.normalwindow.htmlviewer.HTMLViewerApp
 import xyz.normalwindow.htmlviewer.data.settings.ThemeMode
 import xyz.normalwindow.htmlviewer.data.settings.UserPreferences
+import xyz.normalwindow.htmlviewer.ui.about.AboutScreen
 import xyz.normalwindow.htmlviewer.ui.browser.BrowserScreen
 import xyz.normalwindow.htmlviewer.ui.browser.BrowserViewModel
 import xyz.normalwindow.htmlviewer.ui.editor.EditorScreen
@@ -42,8 +43,13 @@ fun AppNavHost() {
                     navController.navigate(
                         "editor/${Uri.encode(path)}?name=${Uri.encode(name)}"
                     )
-                }
+                },
+                onOpenAbout = { navController.navigate("about") }
             )
+        }
+        // 关于页(设置-关于-应用版本进入)
+        composable("about") {
+            AboutScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "browser/{path}?name={name}",
