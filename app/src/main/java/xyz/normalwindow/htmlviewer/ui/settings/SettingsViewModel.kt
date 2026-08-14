@@ -29,6 +29,9 @@ import xyz.normalwindow.htmlviewer.data.settings.ColorStyle
 import xyz.normalwindow.htmlviewer.data.settings.EngineType
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
 import xyz.normalwindow.htmlviewer.data.settings.ThemeMode
+import xyz.normalwindow.htmlviewer.data.update.UpdateChecker
+import xyz.normalwindow.htmlviewer.data.update.UpdateInfo
+import xyz.normalwindow.htmlviewer.data.update.isNewerVersion
 import xyz.normalwindow.htmlviewer.render.UserAgentPreset
 import java.io.File
 import javax.inject.Inject
@@ -74,14 +77,74 @@ data class SettingsUiState(
     val appVersion: String = ""
 )
 
+/** 更新检测结果(设置页"检查更新"对话框数据源) */
+sealed interface UpdateUiState {
+    /** 空闲(未检查) */
+    data object Idle : UpdateUiState
+    /** 检查中 */
+    data object Checking : UpdateUiState
+    /** 发现新版本 */
+    data class Found(val info: UpdateInfo) : UpdateUiState
+    /** 已是最新版本(当前版本号) */
+    data class UpToDate(val currentVersion: String) : UpdateUiState
+    /** 检查失败(网络/仓库无 Release 等) */
+    data class Failed(val message: String) : UpdateUiState
+}
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
-    private val fileRootProvider: FileRootProvider
+    private val fileRootProvider: FileRootProvider,
+    private val updateChecker: UpdateChecker
 ) : ViewModel() {
 
     private val resourceCache = ResourceCache()
+
+    /** 更新检测结果(检查更新对话框数据源) */
+    private val updateStateFlow = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
+    val updateState: StateFlow<UpdateUiState> = updateStateFlow.asStateFlow()
+
+    /** 本仓库 GitHub Releases 页面(检查更新来源) */
+    private val repoReleaseUrl: String = "https://api.github.com/repos/normalwindow/NormlW-HTMLviewer/releases/latest"
+
+    /**
+     * 手动检查更新:查询 GitHub Releases latest,与当前版本比较。
+     * 结果含完整 Release 信息(版本/说明/发布时间/资产大小/下载直链)。
+     */
+    fun checkForUpdate() {
+        if (updateStateFlow.value == UpdateUiState.Checking) return
+        updateStateFlow.value = UpdateUiState.Checking
+        viewModelScope.launch {
+            val currentVersion = runCatching {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName
+            }.getOrNull() ?: ""
+            updateStateFlow.value = updateChecker.checkLatest(repoReleaseUrl)
+                .fold(
+                    onSuccess = { info ->
+                        if (isNewerVersion(info.tagName, currentVersion)) {
+                            UpdateUiState.Found(info)
+                        } else {
+                            UpdateUiState.UpToDate(currentVersion)
+                        }
+                    },
+                    onFailure = { UpdateUiState.Failed(it.message ?: "network error") }
+                )
+        }
+    }
+
+    /** 当前发行版是否 Lite(按 applicationId 后缀判断) */
+    val isLiteEdition: Boolean
+        get() = BuildConfig.APPLICATION_ID.endsWith(".lite")
+
+    /** 当前设备主 ABI(资产匹配用,如 arm64-v8a) */
+    val primaryAbi: String
+        get() = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
+
+    /** UI 消费检查结果后重置 */
+    fun consumeUpdateState() {
+        updateStateFlow.value = UpdateUiState.Idle
+    }
 
     /** 缓存统计(IO 线程异步刷新,与偏好合并为 UI 状态) */
     private val statsFlow = MutableStateFlow<CacheStats?>(null)

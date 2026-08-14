@@ -2,6 +2,7 @@ package xyz.normalwindow.htmlviewer.ui.settings
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -15,10 +16,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -31,7 +35,11 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -46,8 +54,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -209,15 +215,15 @@ fun SettingsScreen(
         // ---------- 外观 ----------
         SectionTitle(stringResource(R.string.settings_section_appearance))
 
-        // 主题模式:跟随系统/浅色/深色 三选项一行展示
+        // 主题模式:浅色/跟随系统/深色 三选项一行展示
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             listOf(
-                ThemeMode.SYSTEM to R.string.theme_system,
                 ThemeMode.LIGHT to R.string.theme_light,
+                ThemeMode.SYSTEM to R.string.theme_system,
                 ThemeMode.DARK to R.string.theme_dark
             ).forEachIndexed { index, (mode, labelRes) ->
                 SegmentedButton(
@@ -744,6 +750,130 @@ fun SettingsScreen(
             leadingContent = { Icon(Icons.Filled.Info, contentDescription = null) },
             modifier = Modifier.clickableRow(onOpenAbout)
         )
+        // 检查更新:仅手动触发,查询 GitHub Releases latest
+        val updateState by vm.updateState.collectAsStateWithLifecycle()
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.settings_check_update)) },
+            supportingContent = {
+                Text(
+                    if (updateState == UpdateUiState.Checking) {
+                        stringResource(R.string.update_checking_title)
+                    } else {
+                        stringResource(R.string.settings_check_update_desc)
+                    }
+                )
+            },
+            leadingContent = { Icon(Icons.Filled.SystemUpdate, contentDescription = null) },
+            modifier = Modifier.clickableRow { vm.checkForUpdate() }
+        )
+        // 更新检测结果对话框
+        when (val us = updateState) {
+            is UpdateUiState.Checking -> {
+                AlertDialog(
+                    onDismissRequest = { vm.consumeUpdateState() },
+                    title = { Text(stringResource(R.string.update_checking_title)) },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(16.dp))
+                            Text(stringResource(R.string.settings_check_update_desc))
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { vm.consumeUpdateState() }) {
+                            Text(stringResource(R.string.action_cancel))
+                        }
+                    }
+                )
+            }
+            is UpdateUiState.Found -> {
+                AlertDialog(
+                    onDismissRequest = { vm.consumeUpdateState() },
+                    title = { Text(stringResource(R.string.update_found_title)) },
+                    text = {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.update_found_version, us.info.version),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.update_current_version, state.appVersion.ifBlank { "-" }),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val asset = us.info.findAsset(vm.isLiteEdition, vm.primaryAbi)
+                            if (asset != null) {
+                                Text(
+                                    text = stringResource(R.string.update_package_size, formatBytes(asset.size)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text = stringResource(R.string.update_published, formatUpdateTime(us.info.publishedAt)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = us.info.body,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 10,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                vm.consumeUpdateState()
+                                val url = us.info.findAsset(vm.isLiteEdition, vm.primaryAbi)
+                                    ?.browserDownloadUrl ?: us.info.htmlUrl
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    )
+                                }
+                            }
+                        ) {
+                            Text(stringResource(R.string.update_download))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { vm.consumeUpdateState() }) {
+                            Text(stringResource(R.string.action_cancel))
+                        }
+                    }
+                )
+            }
+            is UpdateUiState.UpToDate -> {
+                AlertDialog(
+                    onDismissRequest = { vm.consumeUpdateState() },
+                    title = { Text(stringResource(R.string.update_latest_title)) },
+                    text = { Text(stringResource(R.string.update_latest_desc, us.currentVersion)) },
+                    confirmButton = {
+                        TextButton(onClick = { vm.consumeUpdateState() }) {
+                            Text(stringResource(R.string.action_confirm))
+                        }
+                    }
+                )
+            }
+            is UpdateUiState.Failed -> {
+                AlertDialog(
+                    onDismissRequest = { vm.consumeUpdateState() },
+                    title = { Text(stringResource(R.string.update_check_failed)) },
+                    text = { Text(stringResource(R.string.update_check_failed_desc)) },
+                    confirmButton = {
+                        TextButton(onClick = { vm.consumeUpdateState() }) {
+                            Text(stringResource(R.string.action_confirm))
+                        }
+                    }
+                )
+            }
+            UpdateUiState.Idle -> Unit
+        }
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_engine_versions)) },
             supportingContent = {
@@ -789,6 +919,13 @@ private fun formatBytes(bytes: Long): String = when {
     bytes >= 1024 -> String.format("%.1f KB", bytes / 1024.0)
     else -> "$bytes B"
 }
+
+/** GitHub ISO-8601 发布时间(UTC)→ 本地时区 "yyyy-MM-dd HH:mm"(解析失败原样返回) */
+private fun formatUpdateTime(iso: String): String = runCatching {
+    java.time.Instant.parse(iso)
+        .atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+}.getOrDefault(iso)
 
 /** 预设主题色种子(ARGB) */
 private val CUSTOM_COLOR_SEEDS = listOf(

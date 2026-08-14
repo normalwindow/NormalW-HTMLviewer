@@ -2,7 +2,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式,版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-> 说明:发布版本号(当前 `v1.1.2`)与本地 debug 开发版本号序列相互独立、互不通用。
+> 说明:发布版本号(当前 `v1.1.3`)与本地 debug 开发版本号序列相互独立、互不通用。
+
+## [1.1.3] - 2026-08-14
+
+### 新增
+
+- **应用内置更新检测**:设置-关于新增"检查更新",通过本仓库 GitHub Releases API 检测最新版本(手动触发);发现新版本时展示版本号/当前版本/更新说明/发布时间/安装包大小,点击"前往下载"跳转浏览器打开匹配当前发行版(Full/Lite)与设备 ABI 的 APK 直链(无匹配时回退 Release 页面);已是最新/网络失败均有明确提示
+- 主题模式选项顺序调整为 **浅色 / 跟随系统 / 深色**(分段按钮一行)
+
+### 发布
+
+- 本次 release 仅发布 **Lite 版**(`1.1.3-lite`,versionCode 5):仅系统 WebView,约 2.2 MB;Full 版仍为 1.1.0
 
 ## [1.1.2] - 2026-08-14
 
@@ -82,3 +93,4 @@
 [1.1.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.0
 [1.1.1]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.1
 [1.1.2]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.2
+[1.1.3]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.3

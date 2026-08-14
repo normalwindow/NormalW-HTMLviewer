@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.2-blue">
+  <img src="https://img.shields.io/badge/version-1.1.3-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -96,12 +96,13 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 
 > Release 产物默认使用 debug 签名,便于本地直接构建安装;正式上架请在 `signingConfigs` 中配置正式 keystore 并替换 `build.gradle.kts` 中的引用。
 
-## Release(发布版本 v1.1.2)
+## Release(发布版本 v1.1.3)
 
 - 发布产物位于 [GitHub Releases](https://github.com/normalwindow/NormlW-HTMLviewer/releases),按 ABI 拆分(arm64-v8a / armeabi-v7a / x86 / x86_64),**仅需下载 arm64-v8a 包**即可在绝大多数主流设备安装
 - 提供两种发行版:
   - **Full 版**(`1.1.0`):含 GeckoView 兼容内核,功能完整(约 185 MB)
-  - **Lite 版**(`1.1.2-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式
+  - **Lite 版**(`1.1.3-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式
+- 应用内"设置-关于-检查更新"可自动检测新版本并跳转下载
 - 版本变更记录见 [CHANGELOG.md](CHANGELOG.md)
 
 ## 重新构建 CodeMirror bundle
