@@ -36,6 +36,7 @@
 - **编码兼容**:自动检测 UTF-8/GBK/UTF-16(BOM 优先),支持 GBK 存量 HTML 文件,可一键转存 UTF-8
 - **人性化设置**:主题(跟随系统/浅色/深色 + 动态取色)、8 种 Material3 配色方案(TonalSpot/Neutral/Vibrant/Expressive/Rainbow/FruitSalad/Monochrome/Fidelity)、自定义主题色、编辑器字号/缩进/自动保存/自动换行、沉浸模式
 - **多语言**:支持简体中文与 English,可在设置中即时切换(跟随系统/中文/English)
+- **应用内置更新检测**:设置-关于"检查更新",通过 GitHub Releases Atom 检测新版本(自动匹配 Full/Lite 与设备 ABI 的下载直链,国内网络可用)
 - **国内环境适配**:Gradle 依赖全部走阿里云镜像;默认简体中文,支持 English
 
 <p align="center">
@@ -62,6 +63,7 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 │   ├── settings/    DataStore:用户偏好
 │   ├── file/        FileRepository + 编码检测 + 回收站
 │   ├── template/    内置模板库(assets/templates)
+│   ├── update/       更新检测(GitHub Releases Atom/API)
 │   └── di/          Hilt 模块
 ├── render/          Renderer 抽象:WebViewRenderer / GeckoRenderer
 ├── ui/
@@ -130,8 +132,8 @@ npm run build        # 产物写入 app/src/main/assets/editor/
 - [x] 颜色&配色美化(8 种 Material3 色调方案)
 - [x] 文件/文件夹导入(SAF)
 - [x] English Version(设置内即时切换)
+- [x] 使用 GitHub 检测应用更新(Atom 源,检查 Releases 最新版本并提示下载)
 - [ ] 接入百度网盘api实现同步
-- [ ] 使用 GitHub 检测应用更新(检查 Releases 最新版本并提示下载)
 
 ## 已知限制
 

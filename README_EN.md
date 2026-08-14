@@ -36,6 +36,7 @@ An industrial-grade mobile **HTML editor with fullscreen preview** app (native M
 - **Encoding support**: auto-detects UTF-8/GBK/UTF-16 (BOM first), opens legacy GBK HTML files, one-click save as UTF-8
 - **User-friendly settings**: theme (system/light/dark + dynamic color), 8 Material3 color schemes (TonalSpot/Neutral/Vibrant/Expressive/Rainbow/FruitSalad/Monochrome/Fidelity), custom theme color, editor font size/indent/auto-save/word wrap, immersive mode
 - **Multi-language**: Simplified Chinese and English, switch instantly in settings (follow system / 中文 / English)
+- **Built-in update check**: "Check for Updates" in Settings → About detects new releases via GitHub Releases Atom (auto-matches the Full/Lite edition and device ABI download link, works on domestic networks)
 
 <p align="center">
   <img src="readme/lander2.webp" alt="NW-HTMLviewer preview" width="80%">
@@ -61,6 +62,7 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 │   ├── settings/    DataStore: user preferences
 │   ├── file/        FileRepository + encoding detection + recycle bin
 │   ├── template/    built-in template library (assets/templates)
+│   ├── update/      update checker (GitHub Releases Atom/API)
 │   └── di/          Hilt modules
 ├── render/          Renderer abstraction: WebViewRenderer / GeckoRenderer
 ├── ui/
@@ -129,8 +131,8 @@ npm run build        # outputs to app/src/main/assets/editor/
 - [x] Color schemes (8 Material3 tonal schemes)
 - [x] File/folder import (SAF)
 - [x] English version (instant switch in settings)
+- [x] Check for app updates via GitHub Releases (Atom source)
 - [ ] Baidu Netdisk API sync
-- [ ] Check for app updates via GitHub Releases
 
 ## Known Limitations
 
