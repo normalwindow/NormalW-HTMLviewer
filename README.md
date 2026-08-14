@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="readme/lander1.webp" alt="NW-HTMLviewer 预览" width="80%">
+  <img src="readme/lander1.webp" alt="NW-HTMLviewer 预览" width="100%">
 </p>
 
 ## 功能特性
@@ -40,7 +40,7 @@
 - **国内环境适配**:Gradle 依赖全部走阿里云镜像;默认简体中文,支持 English
 
 <p align="center">
-  <img src="readme/lander2.webp" alt="NW-HTMLviewer 预览" width="80%">
+  <img src="readme/lander2.webp" alt="NW-HTMLviewer 预览" width="100%">
 </p>
 
 ## 技术栈
@@ -96,14 +96,14 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 # 或 assembleLiteRelease(全量版默认 assembleFullDebug/assembleFullRelease)
 ```
 
-> Release 产物默认使用 debug 签名,便于本地直接构建安装;正式上架请在 `signingConfigs` 中配置正式 keystore 并替换 `build.gradle.kts` 中的引用。
+> NOTE: Release 产物默认使用 debug 签名,便于本地直接构建安装;正式上架请在 `signingConfigs` 中配置正式 keystore 并替换 `build.gradle.kts` 中的引用。
 
 ## Release(发布版本 v1.1.4)
 
 - 发布产物位于 [GitHub Releases](https://github.com/normalwindow/NormlW-HTMLviewer/releases),按 ABI 拆分(arm64-v8a / armeabi-v7a / x86 / x86_64),**仅需下载 arm64-v8a 包**即可在绝大多数主流设备安装
 - 提供两种发行版:
   - **Full 版**(`1.1.0`):含 GeckoView 兼容内核,功能完整(约 185 MB)
-  - **Lite 版**(`1.1.4-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式
+  - **Lite 版**(`1.1.5-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式
 - 应用内"设置-关于-检查更新"可自动检测新版本并跳转下载(Atom 源,国内网络可用)
 - 版本变更记录见 [CHANGELOG.md](CHANGELOG.md)
 
@@ -134,6 +134,12 @@ npm run build        # 产物写入 app/src/main/assets/editor/
 - [x] English Version(设置内即时切换)
 - [x] 使用 GitHub 检测应用更新(Atom 源,检查 Releases 最新版本并提示下载)
 - [ ] 接入百度网盘api实现同步
+- [ ] 实现外部目录浏览(SAF 完整支持)
+- [ ] 重构 CodeMirror 构建流程,合并到主构建流程中
+- [ ] 优化 Full 版体积,轻量替代方案(WebKit 的某些组件？)
+- [ ] 采用更通用的 WebDAV 协议,兼容 Nextcloud、坚果云等多家服务
+- [ ] 考虑插件系统,CodeMirror 6 本身支持扩展,可以开放插件接口
+
 
 ## 已知限制
 
