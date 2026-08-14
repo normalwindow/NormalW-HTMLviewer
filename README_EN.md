@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.4-blue">
+  <img src="https://img.shields.io/badge/version-1.1.5-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -25,7 +25,7 @@ An industrial-grade mobile **HTML editor with fullscreen preview** app (native M
 
 - **Code editing**: Built-in CodeMirror 6 (offline bundle) with HTML/CSS/JS syntax highlighting, line numbers, auto-indent, bracket matching, find & replace, undo/redo, one-click formatting (built-in prettier)
 - **Fullscreen preview**: Immersive preview (system bars hidden), split-screen live preview (edit-and-see, debounced refresh) and fullscreen preview
-- **Browser-style preview**: Back/forward/reload, UA switcher, JS toggle, immersive mode, simulated mouse (touchpad cursor / tap to click / two-finger scroll), console with error/warning drawer
+- **Browser-style preview**: Back/forward/reload, UA switcher, JS toggle, immersive mode, simulated mouse (touchpad cursor / tap to click / two-finger scroll), console with error/warning drawer, right-side large scrollbar (same as the editor, drag/tap to jump, toggleable in the menu)
 - **Enhanced console**: Full console API interception — multiple arguments, `%s/%d/%i/%f/%o/%O` formatting, `%c` inline styles (color/background/bold/italic/underline) and expandable objects (like desktop DevTools); colored level badges for better distinction
 - **Dual render engines**:
   - Lightweight mode: system WebView (Chromium, zero overhead)

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.4-blue">
+  <img src="https://img.shields.io/badge/version-1.1.5-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -25,7 +25,7 @@
 
 - **代码编辑**:内置 CodeMirror 6(离线打包),支持 HTML/CSS/JS 语法高亮、行号、自动缩进、括号匹配、查找替换、撤销/重做、一键整理格式(内置 prettier)
 - **全屏预览**:沉浸式预览(隐藏系统栏),支持分屏实时预览(编辑即所见,防抖刷新)与全屏预览
-- **浏览器式预览**:前进/后退/刷新、UA 标识切换、JS 开关、沉浸模式、模拟鼠标(触摸板式光标/单击/双指滚动)、控制台与报错/警告抽屉
+- **浏览器式预览**:前进/后退/刷新、UA 标识切换、JS 开关、沉浸模式、模拟鼠标(触摸板式光标/单击/双指滚动)、控制台与报错/警告抽屉、右侧大滑动条(编辑器同款,拖动/点击快速定位,菜单可开关)
 - **控制台样式加强**:完整拦截 console API,支持多参数、%s/%d/%f/%o 格式化、%c 内联样式着色与对象点击展开(如电脑浏览器 DevTools);左侧级别标签彩色胶囊化,区分度更强
 - **双渲染内核**:
   - 轻量模式:系统 WebView(Chromium,零额外开销)

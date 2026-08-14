@@ -15,10 +15,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -197,6 +203,19 @@ fun BrowserScreen(
                     .fillMaxWidth()
                     .height(28.dp)
                     .clickable { vm.toggleImmersive() }
+            )
+        }
+
+        // 右侧大滑动条(编辑器同款):页面可滚动时显示,拖动/点击快速定位
+        if (state.scrollbarEnabled && state.scrollbarSupported && state.ready &&
+            state.pageHeight > state.viewportHeight
+        ) {
+            PageScrollbar(
+                scrollY = state.scrollY,
+                pageHeight = state.pageHeight,
+                viewportHeight = state.viewportHeight,
+                onScrollRatio = vm::scrollToRatio,
+                modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
 
@@ -374,6 +393,35 @@ fun BrowserScreen(
                                         Switch(
                                             checked = state.consoleEnabled,
                                             onCheckedChange = { vm.toggleConsole() }
+                                        )
+                                    }
+                                    // 右侧大滑动条(编辑器同款;Gecko 内核不支持时禁用)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stringResource(R.string.browser_scrollbar),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = if (state.scrollbarSupported) {
+                                                    MaterialTheme.colorScheme.onSurface
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.browser_scrollbar_desc),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Switch(
+                                            checked = state.scrollbarEnabled,
+                                            enabled = state.scrollbarSupported,
+                                            onCheckedChange = { vm.toggleScrollbar() }
                                         )
                                     }
                                     // 编辑(与 header 沉浸模式对调:从 header 移入菜单)
@@ -693,3 +741,82 @@ private fun consoleLevelLabel(level: ConsoleLevel): String = stringResource(
         ConsoleLevel.DEBUG -> R.string.console_level_debug
     }
 )
+
+/**
+ * 右侧大滑动条(编辑器同款):
+ * - thumb 高度 = 视口/内容比例,位置跟随页面滚动
+ * - 拖动 thumb 快速滚动页面;点击轨道跳转到对应位置
+ * - 页面不可滚动时由调用方隐藏
+ */
+@Composable
+private fun PageScrollbar(
+    scrollY: Int,
+    pageHeight: Int,
+    viewportHeight: Int,
+    onScrollRatio: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val maxScroll = (pageHeight - viewportHeight).coerceAtLeast(1)
+    val pageRatio = (scrollY.toFloat() / maxScroll).coerceIn(0f, 1f)
+    var dragging by remember { mutableStateOf(false) }
+    var dragRatio by remember { mutableFloatStateOf(pageRatio) }
+    // 非拖动时 thumb 跟随页面滚动
+    LaunchedEffect(pageRatio) {
+        if (!dragging) dragRatio = pageRatio
+    }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .width(28.dp)
+            .fillMaxHeight()
+    ) {
+        val trackH = maxHeight
+        val thumbFraction = (viewportHeight.toFloat() / pageHeight).coerceIn(0.05f, 1f)
+        val thumbH = trackH * thumbFraction
+        val thumbTop = (trackH - thumbH) * dragRatio
+
+        // 轨道(细条,居中)
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .width(4.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        )
+        // 轨道点击跳转(覆盖整条区域,thumb 在上层会优先响应拖动)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(pageHeight, viewportHeight) {
+                    detectTapGestures { offset ->
+                        onScrollRatio(offset.y / size.height)
+                    }
+                }
+        )
+        // thumb(可拖动)
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .offset(y = thumbTop)
+                .width(10.dp)
+                .height(thumbH)
+                .clip(RoundedCornerShape(5.dp))
+                .background(MaterialTheme.colorScheme.primary)
+                .pointerInput(pageHeight, viewportHeight) {
+                    detectDragGestures(
+                        onDragStart = { dragging = true },
+                        onDragEnd = { dragging = false },
+                        onDragCancel = { dragging = false }
+                    ) { change, dragAmount ->
+                        change.consume()
+                        val track = trackH - thumbH
+                        if (track > 0.dp) {
+                            dragRatio = (dragRatio + dragAmount.y / track.toPx()).coerceIn(0f, 1f)
+                            onScrollRatio(dragRatio)
+                        }
+                    }
+                }
+        )
+    }
+}

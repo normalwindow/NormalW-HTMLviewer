@@ -138,6 +138,9 @@ interface Renderer {
     /** 是否支持模拟鼠标/触摸板模式(GeckoView 无公共 JS 注入 API,不支持) */
     val touchpadSupported: Boolean
 
+    /** 是否支持页面尺寸查询(右侧滚动条用;GeckoView 无公共 JS API,不支持) */
+    val pageMetricsSupported: Boolean
+
     /** 是否支持控制台消息收集(GeckoView 无公共 console API,不支持) */
     val consoleSupported: Boolean
 
@@ -181,6 +184,18 @@ interface Renderer {
     fun setScrollListener(listener: RendererScrollListener?)
 
     /**
+     * 查询页面尺寸(内容总高/视口高,回调于主线程;不支持时为 no-op)。
+     * 右侧滚动条的 thumb 比例计算用。
+     */
+    fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit)
+
+    /**
+     * 设置页面尺寸监听:页面加载完成与滚动(节流)后自动查询并回调;
+     * 传 null 停止。右侧滚动条的 thumb 比例计算用。
+     */
+    fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?)
+
+    /**
      * 模拟鼠标(触摸板模式):单指滑动移动光标并产生 hover,轻点=左键单击,
      * 双指上下滑动=页面滚动。关闭时恢复正常触摸交互。
      */
@@ -203,6 +218,8 @@ class WebViewRenderer(
     override val supportsHistoryNav: Boolean get() = true
 
     override val touchpadSupported: Boolean get() = true
+
+    override val pageMetricsSupported: Boolean get() = true
 
     override val consoleSupported: Boolean get() = true
 
@@ -331,6 +348,8 @@ class WebViewRenderer(
                 )
                 // 控制台完整拦截:替换 console API 收集多参数/格式化/%c 样式/对象
                 injectConsoleCapture()
+                // 页面尺寸查询(右侧滑动条 thumb 比例;新页面高度重置后刷新)
+                refreshPageMetricsThrottled()
                 // 触摸板模式跨页面保持:导航完成后重新注入(带确认重试)
                 if (touchpadEnabled) {
                     injectTouchpadScript(true, attempt = 0)
@@ -381,9 +400,10 @@ class WebViewRenderer(
                 return null
             }
         }
-        // 页面滚动监听:内容滑过顶部时 header 变透明防止遮挡
+        // 页面滚动监听:内容滑过顶部时 header 变透明;滚动后刷新页面尺寸(懒加载内容)
         setOnScrollChangeListener { _, _, scrollY, _, _ ->
             scrollListener?.onScrollChanged(0, scrollY)
+            refreshPageMetricsThrottled()
         }
         webChromeClient = object : WebChromeClient() {
             override fun onReceivedTitle(view: WebView?, title: String?) {
@@ -464,6 +484,56 @@ class WebViewRenderer(
 
     override fun setScrollListener(listener: RendererScrollListener?) {
         scrollListener = listener
+    }
+
+    /** 查询页面尺寸:内容总高/视口高(主线程回调;右侧滚动条 thumb 比例用) */
+    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit) {
+        val script = """
+            (function () {
+              var d = document.documentElement || document.body;
+              return JSON.stringify({
+                sh: d.scrollHeight || 0,
+                ch: window.innerHeight || d.clientHeight || 0
+              });
+            })();
+        """.trimIndent()
+        runCatching {
+            // evaluateJavascript 返回值为 JSON 编码字符串(如 "{\"sh\":8,\"ch\":8}"),
+            // 先用 JSONTokener 解一层得到 {"sh":8,"ch":8} 文本,再解析为对象
+            webView.evaluateJavascript(script) { result ->
+                runCatching {
+                    val text = org.json.JSONTokener(result ?: return@runCatching)
+                        .nextValue().toString()
+                    val obj = org.json.JSONObject(text)
+                    val sh = obj.optInt("sh")
+                    val ch = obj.optInt("ch")
+                    if (sh > 0 && ch > 0) callback(sh, ch)
+                }
+            }
+        }
+    }
+
+    /** 页面尺寸监听(加载完成/滚动节流后自动查询) */
+    private var pageMetricsListener: ((scrollHeight: Int, clientHeight: Int) -> Unit)? = null
+
+    /** 滚动节流用:距离上次查询的时间戳 */
+    private var lastMetricsQueryAt = 0L
+
+    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?) {
+        pageMetricsListener = listener
+        if (listener != null) {
+            // 立即查询一次当前尺寸
+            queryPageMetrics { sh, ch -> listener(sh, ch) }
+        }
+    }
+
+    /** 滚动后节流查询页面尺寸(懒加载/内容变化时 thumb 比例保持正确) */
+    private fun refreshPageMetricsThrottled() {
+        val now = System.currentTimeMillis()
+        if (now - lastMetricsQueryAt < 250) return
+        lastMetricsQueryAt = now
+        val listener = pageMetricsListener ?: return
+        queryPageMetrics { sh, ch -> listener(sh, ch) }
     }
 
     override fun setTouchpadMode(enabled: Boolean) {

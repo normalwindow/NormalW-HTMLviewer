@@ -72,6 +72,16 @@ class BrowserViewModel @Inject constructor(
         val consoleEnabled: Boolean = true,
         /** 当前内核是否支持 console 收集(Gecko 不支持) */
         val consoleSupported: Boolean = false,
+        /** 右侧大滑动条开关(编辑器同款,菜单可切换) */
+        val scrollbarEnabled: Boolean = true,
+        /** 当前内核是否支持页面尺寸查询(Gecko 不支持时禁用滑动条) */
+        val scrollbarSupported: Boolean = false,
+        /** 页面当前滚动位置 */
+        val scrollY: Int = 0,
+        /** 页面内容总高(右侧滑动条 thumb 比例计算) */
+        val pageHeight: Int = 1,
+        /** 页面视口高 */
+        val viewportHeight: Int = 1,
         /** 控制台/错误日志(最多保留 200 条) */
         val consoleEntries: List<ConsoleEntry> = emptyList(),
         /** 未读日志计数(打开抽屉后清零) */
@@ -141,12 +151,18 @@ class BrowserViewModel @Inject constructor(
                     _state.update { it.copy(canGoBack = canGoBack, canGoForward = canGoForward) }
                 }
             })
-            // 页面滚动:内容滑过顶部时 header 变透明防止遮挡
+            // 页面滚动:内容滑过顶部时 header 变透明;右侧滑动条 thumb 跟随
             r.setScrollListener(object : RendererScrollListener {
                 override fun onScrollChanged(scrollX: Int, scrollY: Int) {
-                    _state.update { it.copy(pageScrolled = scrollY > 0) }
+                    _state.update {
+                        it.copy(pageScrolled = scrollY > 0, scrollY = scrollY)
+                    }
                 }
             })
+            // 页面加载完成后查询尺寸,供右侧滑动条计算 thumb 比例
+            r.setPageMetricsListener { sh, ch ->
+                _state.update { it.copy(pageHeight = sh, viewportHeight = ch) }
+            }
             r.setJavaScriptEnabled(prefs.jsEnabled)
             if (ua != UserAgentPreset.DEFAULT) {
                 r.setUserAgent(ua.build(appContext), ua.desktopViewport)
@@ -159,9 +175,11 @@ class BrowserViewModel @Inject constructor(
                     uaPreset = ua,
                     jsEnabled = prefs.jsEnabled,
                     consoleEnabled = prefs.browserConsole,
+                    scrollbarEnabled = prefs.browserScrollbar,
                     supportsHistoryNav = r.supportsHistoryNav,
                     touchpadSupported = r.touchpadSupported,
-                    consoleSupported = r.consoleSupported
+                    consoleSupported = r.consoleSupported,
+                    scrollbarSupported = r.pageMetricsSupported
                 )
             }
             r.loadFile(File(path))
@@ -205,6 +223,22 @@ class BrowserViewModel @Inject constructor(
         val next = !_state.value.consoleEnabled
         _state.update { it.copy(consoleEnabled = next) }
         viewModelScope.launch { settingsRepository.setBrowserConsole(next) }
+    }
+
+    /** 切换右侧大滑动条(持久化到设置;仅支持的内核可用) */
+    fun toggleScrollbar() {
+        if (!_state.value.scrollbarSupported) return
+        val next = !_state.value.scrollbarEnabled
+        _state.update { it.copy(scrollbarEnabled = next) }
+        viewModelScope.launch { settingsRepository.setBrowserScrollbar(next) }
+    }
+
+    /** 按比例滚动页面(0..1):右侧滑动条拖动/点击轨道 */
+    fun scrollToRatio(ratio: Float) {
+        val s = _state.value
+        val maxScroll = (s.pageHeight - s.viewportHeight).coerceAtLeast(0)
+        if (maxScroll <= 0) return
+        renderer?.executeJs("window.scrollTo(0, ${(maxScroll * ratio.coerceIn(0f, 1f)).toInt()})")
     }
 
     /** 清空控制台日志 */

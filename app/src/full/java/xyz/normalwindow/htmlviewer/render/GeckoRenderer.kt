@@ -69,6 +69,8 @@ class GeckoRenderer(
     /** GeckoView 无公共 JS 注入 API,触摸板模式降级为不支持 */
     override val touchpadSupported: Boolean get() = false
 
+    override val pageMetricsSupported: Boolean get() = false
+
     /** GeckoView 无公共 console 回调 API,控制台收集降级为不支持 */
     override val consoleSupported: Boolean get() = false
 
@@ -171,6 +173,12 @@ class GeckoRenderer(
     override fun setScrollListener(listener: RendererScrollListener?) {
         scrollListener = listener
     }
+
+    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit) {
+        // GeckoView 无公共 JS API,不支持(右侧滚动条在 Gecko 内核下禁用)
+    }
+
+    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?) = Unit
 
     override fun setTouchpadMode(enabled: Boolean) {
         // GeckoView 无 evaluateJavascript/WebExtension 消息通道,不支持模拟鼠标

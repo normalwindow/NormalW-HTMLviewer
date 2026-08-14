@@ -2,7 +2,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式,版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-> 说明:发布版本号(当前 `v1.1.4`)与本地 debug 开发版本号序列相互独立、互不通用。
+> 说明:发布版本号(当前 `v1.1.5`)与本地 debug 开发版本号序列相互独立、互不通用。
+
+## [1.1.5] - 2026-08-14
+
+### 新增
+
+- **浏览器预览页右侧大滑动条**(编辑器同款):页面可滚动时显示在右侧,thumb 高度随视口/内容比例自适应,拖动 thumb 或点击轨道快速定位;懒加载页面滚动后自动刷新尺寸;浏览器"更多"菜单可开关(默认开启,设置持久化);GeckoView 内核无公共 JS API 时开关自动禁用
+
+### 发布
+
+- 本次 release 仅发布 **Lite 版**(`1.1.5-lite`,versionCode 7):仅系统 WebView,约 2.2 MB;Full 版仍为 1.1.0
+- 已安装 1.1.4 的用户通过"检查更新"即可收到本版本
 
 ## [1.1.4] - 2026-08-14
 
@@ -106,3 +117,4 @@
 [1.1.2]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.2
 [1.1.3]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.3
 [1.1.4]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.4
+[1.1.5]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.5

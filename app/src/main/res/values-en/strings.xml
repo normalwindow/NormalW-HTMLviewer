@@ -234,6 +234,8 @@
     <string name="browser_touchpad">Simulated Mouse</string>
     <string name="browser_touchpad_desc">Tap to click, two-finger scroll</string>
     <string name="browser_console">Console</string>
+    <string name="browser_scrollbar">Right Scrollbar</string>
+    <string name="browser_scrollbar_desc">Same large scrollbar as the editor, drag to scroll the page quickly</string>
     <string name="browser_console_desc">Collect console logs and page errors</string>
     <string name="browser_console_gecko_note">Gecko engine only supports page load errors</string>
     <string name="browser_console_title">Console &amp; Errors</string>

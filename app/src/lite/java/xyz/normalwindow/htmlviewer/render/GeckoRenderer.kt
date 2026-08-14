@@ -20,6 +20,8 @@ class GeckoRenderer(
     override val view: View get() = emptyView
     override val supportsHistoryNav: Boolean get() = false
     override val touchpadSupported: Boolean get() = false
+
+    override val pageMetricsSupported: Boolean get() = false
     override val consoleSupported: Boolean get() = false
     override val resourceCacheSupported: Boolean get() = false
 
@@ -33,6 +35,10 @@ class GeckoRenderer(
     override fun setJavaScriptEnabled(enabled: Boolean) = Unit
     override fun setStateListener(listener: RendererStateListener?) = Unit
     override fun setScrollListener(listener: RendererScrollListener?) = Unit
+
+    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit) = Unit
+
+    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?) = Unit
     override fun setTouchpadMode(enabled: Boolean) = Unit
     override fun setConsoleListener(listener: RendererConsoleListener?) = Unit
     override fun setResourceCache(enabled: Boolean) = Unit

@@ -16,9 +16,9 @@ android {
         applicationId = "xyz.normalwindow.htmlviewer"
         minSdk = 26
         targetSdk = 36
-        // 发布版本(v1.1.4):与本地 debug 开发版本号序列独立,互不通用
-        versionCode = 6
-        versionName = "1.1.4"
+        // 发布版本(v1.1.5):与本地 debug 开发版本号序列独立,互不通用
+        versionCode = 7
+        versionName = "1.1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

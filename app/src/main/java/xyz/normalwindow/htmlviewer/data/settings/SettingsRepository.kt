@@ -38,6 +38,8 @@ data class UserPreferences(
     val jsEnabled: Boolean = true,
     /** 浏览器控制台收集开关(工具栏抽屉查看日志/报错/警告) */
     val browserConsole: Boolean = true,
+    /** 浏览器预览页右侧大滑动条(编辑器同款,菜单可切换) */
+    val browserScrollbar: Boolean = true,
     /** 资源本地固化缓存开关(网络资源保存到 HTML 同目录隐藏文件夹,支持离线) */
     val resourceCacheEnabled: Boolean = true,
     /** Debug 模式:开启后记录应用内日志,可在设置页导出分析 */
@@ -73,6 +75,7 @@ class SettingsRepository @Inject constructor(
         val UA_PRESET = stringPreferencesKey("ua_preset")
         val JS_ENABLED = booleanPreferencesKey("js_enabled")
         val BROWSER_CONSOLE = booleanPreferencesKey("browser_console")
+        val BROWSER_SCROLLBAR = booleanPreferencesKey("browser_scrollbar")
         val RESOURCE_CACHE = booleanPreferencesKey("resource_cache")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
         val CLICK_OPENS_PREVIEW = booleanPreferencesKey("click_opens_preview")
@@ -99,6 +102,7 @@ class SettingsRepository @Inject constructor(
             uaPreset = p[Keys.UA_PRESET] ?: "DEFAULT",
             jsEnabled = p[Keys.JS_ENABLED] ?: true,
             browserConsole = p[Keys.BROWSER_CONSOLE] ?: true,
+            browserScrollbar = p[Keys.BROWSER_SCROLLBAR] ?: true,
             resourceCacheEnabled = p[Keys.RESOURCE_CACHE] ?: true,
             debugMode = p[Keys.DEBUG_MODE] ?: false,
             clickOpensPreview = p[Keys.CLICK_OPENS_PREVIEW] ?: true,
@@ -156,6 +160,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setBrowserConsole(enabled: Boolean) {
         context.settingsDataStore.edit { it[Keys.BROWSER_CONSOLE] = enabled }
+    }
+
+    suspend fun setBrowserScrollbar(enabled: Boolean) {
+        context.settingsDataStore.edit { it[Keys.BROWSER_SCROLLBAR] = enabled }
     }
 
     suspend fun setResourceCacheEnabled(enabled: Boolean) {
