@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import xyz.normalwindow.htmlviewer.BuildConfig
 import xyz.normalwindow.htmlviewer.data.backup.DataBackup
+import xyz.normalwindow.htmlviewer.data.cache.CacheLocation
 import xyz.normalwindow.htmlviewer.data.cache.CacheStats
 import xyz.normalwindow.htmlviewer.data.cache.ResourceCache
 import xyz.normalwindow.htmlviewer.data.debug.AppLog
@@ -53,6 +54,8 @@ data class SettingsUiState(
     val resourceCacheEnabled: Boolean = true,
     /** 缓存统计(未加载/为空时为 null) */
     val cacheStats: CacheStats? = null,
+    /** 各缓存位置明细(设置页"选择清理"对话框数据源) */
+    val cacheLocations: List<CacheLocation> = emptyList(),
     /** Debug 模式开关 */
     val debugMode: Boolean = false,
     /** 文件列表默认视图:true=网格 */
@@ -83,6 +86,9 @@ class SettingsViewModel @Inject constructor(
     /** 缓存统计(IO 线程异步刷新,与偏好合并为 UI 状态) */
     private val statsFlow = MutableStateFlow<CacheStats?>(null)
 
+    /** 各缓存位置明细(选择清理对话框数据源) */
+    private val cacheLocationsFlow = MutableStateFlow<List<CacheLocation>>(emptyList())
+
     /** 日志导出结果文件(UI 监听后分享) */
     private val exportFileFlow = MutableStateFlow<File?>(null)
     val exportFile: StateFlow<File?> = exportFileFlow.asStateFlow()
@@ -103,7 +109,9 @@ class SettingsViewModel @Inject constructor(
     private val clearLogsFeedbackFlow = MutableStateFlow<Int?>(null)
     val clearLogsFeedback: StateFlow<Int?> = clearLogsFeedbackFlow.asStateFlow()
 
-    val state: StateFlow<SettingsUiState> = combine(settingsRepository.preferences, statsFlow) { prefs, stats ->
+    val state: StateFlow<SettingsUiState> = combine(
+        settingsRepository.preferences, statsFlow, cacheLocationsFlow
+    ) { prefs, stats, locations ->
         SettingsUiState(
             themeMode = prefs.themeMode,
             dynamicColor = prefs.dynamicColor,
@@ -119,6 +127,7 @@ class SettingsViewModel @Inject constructor(
             browserConsole = prefs.browserConsole,
             resourceCacheEnabled = prefs.resourceCacheEnabled,
             cacheStats = stats,
+            cacheLocations = locations,
             debugMode = prefs.debugMode,
             gridView = prefs.gridView,
             customColorSeed = prefs.customColorSeed,
@@ -281,13 +290,16 @@ class SettingsViewModel @Inject constructor(
         clearLogsFeedbackFlow.value = null
     }
 
-    /** 统计所有 HTML 目录下的固化缓存(IO 线程) */
+    /** 统计所有 HTML 目录下的固化缓存(IO 线程),并刷新位置明细 */
     fun refreshCacheStats() {
         viewModelScope.launch {
-            val stats = withContext(Dispatchers.IO) {
-                resourceCache.stats(fileRootProvider.defaultRoot)
+            val (stats, locations) = withContext(Dispatchers.IO) {
+                val s = resourceCache.stats(fileRootProvider.defaultRoot)
+                val l = resourceCache.listLocations(fileRootProvider.defaultRoot)
+                s to l
             }
             statsFlow.value = if (stats.resourceCount > 0) stats else null
+            cacheLocationsFlow.value = locations
         }
     }
 
@@ -298,7 +310,40 @@ class SettingsViewModel @Inject constructor(
                 resourceCache.clearAll(fileRootProvider.defaultRoot)
             }
             statsFlow.value = null
+            cacheLocationsFlow.value = emptyList()
+            clearCacheFeedbackFlow.value = ClearCacheKind.ALL
         }
+    }
+
+    /** 选择清理:只清除勾选的缓存位置,其余保留 */
+    fun clearCacheLocations(selected: List<File>) {
+        if (selected.isEmpty()) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                resourceCache.clearLocations(selected)
+            }
+            // 重新统计与刷新位置明细
+            val (stats, locations) = withContext(Dispatchers.IO) {
+                resourceCache.stats(fileRootProvider.defaultRoot) to
+                    resourceCache.listLocations(fileRootProvider.defaultRoot)
+            }
+            statsFlow.value = if (stats.resourceCount > 0) stats else null
+            cacheLocationsFlow.value = locations
+            clearCacheFeedbackFlow.value = ClearCacheKind.SELECTED(selected.size)
+        }
+    }
+
+    /** 缓存清理反馈(UI 监听后 Snackbar 提示) */
+    sealed interface ClearCacheKind {
+        data object ALL : ClearCacheKind
+        data class SELECTED(val count: Int) : ClearCacheKind
+    }
+
+    private val clearCacheFeedbackFlow = MutableStateFlow<ClearCacheKind?>(null)
+    val clearCacheFeedback: StateFlow<ClearCacheKind?> = clearCacheFeedbackFlow.asStateFlow()
+
+    fun consumeClearCacheFeedback() {
+        clearCacheFeedbackFlow.value = null
     }
 
     fun setGridView(enabled: Boolean) = viewModelScope.launch {

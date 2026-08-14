@@ -40,9 +40,9 @@ fun RightAlignedMenu(
         properties = PopupProperties(focusable = true)
     ) {
         Surface(
-            // IntrinsicSize.Min:菜单宽度取内容宽度,绕过 Popup 传播的锚点约束
-            // (否则菜单会撑满锚点宽度,右对齐失效)
-            modifier = modifier.width(IntrinsicSize.Min),
+            // IntrinsicSize.Max:菜单宽度取内容完整单行宽度,绕过 Popup 传播的
+            // 锚点约束(否则菜单撑满锚点宽度),且不会因宽度不足把文字挤成两行
+            modifier = modifier.width(IntrinsicSize.Max),
             shape = MaterialTheme.shapes.extraSmall,
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 4.dp,

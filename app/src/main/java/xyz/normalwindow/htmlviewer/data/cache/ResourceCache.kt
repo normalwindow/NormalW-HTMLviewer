@@ -151,6 +151,40 @@ class ResourceCache {
         return CacheStats(count, bytes)
     }
 
+    /** 列出所有缓存位置(设置页"选择清理"用,仅含非空位置) */
+    fun listLocations(root: File): List<CacheLocation> {
+        val result = mutableListOf<CacheLocation>()
+        root.walkTopDown().forEach { f ->
+            if (f.isDirectory && f.name == CACHE_DIR_NAME) {
+                val idxFile = File(f, INDEX_NAME)
+                var count = 0
+                var bytes = 0L
+                if (idxFile.isFile) {
+                    idxFile.readLines().forEach { line ->
+                        val parts = line.split('\t')
+                        if (parts.size >= 4) {
+                            count += 1
+                            bytes += parts[3].toLongOrNull() ?: 0
+                        }
+                    }
+                }
+                if (count > 0) result.add(CacheLocation(cacheDir = f, resourceCount = count, totalBytes = bytes))
+            }
+        }
+        // 按占用大小降序,便于优先清理大头
+        return result.sortedByDescending { it.totalBytes }
+    }
+
+    /** 清理指定缓存位置列表(选择清理) */
+    fun clearLocations(locations: List<File>) {
+        synchronized(lock) {
+            locations.forEach { dir ->
+                runCatching { dir.deleteRecursively() }
+                dirIndex.remove(dir.absolutePath)
+            }
+        }
+    }
+
     private fun index(cacheDir: File): MutableMap<String, CacheEntry> {
         val key = cacheDir.absolutePath
         dirIndex[key]?.let { return it }
@@ -252,3 +286,10 @@ class ResourceCache {
 
 /** 缓存统计(设置页展示) */
 data class CacheStats(val resourceCount: Int, val totalBytes: Long)
+
+/** 单个缓存位置(某 HTML 目录下的 .htmlviewer_cache) */
+data class CacheLocation(
+    val cacheDir: java.io.File,
+    val resourceCount: Int,
+    val totalBytes: Long
+)

@@ -156,6 +156,13 @@
     <string name="settings_cache_size">%1$d resources cached, %2$s used</string>
     <string name="settings_cache_empty">No cache yet (auto-created after opening web pages)</string>
     <string name="settings_cache_clear_btn">Clean</string>
+    <string name="settings_cache_long_press">Long-press this row to clear all cache</string>
+    <string name="settings_cache_select_title">Select Cache Locations to Clear</string>
+    <string name="settings_cache_select_empty">No cache to clear</string>
+    <string name="settings_cache_select_clear">Clear Selected (%1$d)</string>
+    <string name="settings_cache_cleared_all">All cache cleared</string>
+    <string name="settings_cache_cleared_selected">Cleared %1$d cache location(s)</string>
+    <string name="cache_location_label">%1$d resources · %2$s</string>
     <string name="settings_section_backup">Data Backup</string>
     <string name="settings_data_export">Export Data</string>
     <string name="settings_data_export_desc">Compress all files into a zip (with manifest) to share or save</string>

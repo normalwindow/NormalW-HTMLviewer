@@ -4,9 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -36,11 +38,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +64,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -78,6 +86,7 @@ import xyz.normalwindow.htmlviewer.ui.components.uaPresetLabel
 import xyz.normalwindow.htmlviewer.render.UserAgentPreset
 
 /** 设置中心:内核选择 / 外观 / 编辑器 / 浏览器与预览 / 开发者 / 关于 */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     vm: SettingsViewModel = hiltViewModel(),
@@ -200,21 +209,25 @@ fun SettingsScreen(
         // ---------- 外观 ----------
         SectionTitle(stringResource(R.string.settings_section_appearance))
 
-        listOf(
-            ThemeMode.SYSTEM to R.string.theme_system,
-            ThemeMode.LIGHT to R.string.theme_light,
-            ThemeMode.DARK to R.string.theme_dark
-        ).forEach { (mode, labelRes) ->
-            ListItem(
-                headlineContent = { Text(stringResource(labelRes)) },
-                trailingContent = {
-                    RadioButton(
-                        selected = state.themeMode == mode,
-                        onClick = { vm.setThemeMode(mode) }
-                    )
-                },
-                modifier = Modifier.clickableRow { vm.setThemeMode(mode) }
-            )
+        // 主题模式:跟随系统/浅色/深色 三选项一行展示
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            listOf(
+                ThemeMode.SYSTEM to R.string.theme_system,
+                ThemeMode.LIGHT to R.string.theme_light,
+                ThemeMode.DARK to R.string.theme_dark
+            ).forEachIndexed { index, (mode, labelRes) ->
+                SegmentedButton(
+                    selected = state.themeMode == mode,
+                    onClick = { vm.setThemeMode(mode) },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = 3)
+                ) {
+                    Text(stringResource(labelRes), maxLines = 1)
+                }
+            }
         }
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_dynamic_color)) },
@@ -356,36 +369,34 @@ fun SettingsScreen(
         // ---------- 编辑器 ----------
         SectionTitle(stringResource(R.string.settings_section_editor))
 
-        // 字号:滑块独占一行,避免与标题/数值挤在一行导致文字折行
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_font_size)) },
             supportingContent = {
                 Text(stringResource(R.string.settings_value, state.editorFontSize.toInt()))
+            },
+            trailingContent = {
+                Slider(
+                    value = state.editorFontSize,
+                    onValueChange = vm::setEditorFontSize,
+                    valueRange = 10f..24f,
+                    modifier = Modifier.fillMaxWidth(0.5f)
+                )
             }
         )
-        Slider(
-            value = state.editorFontSize,
-            onValueChange = vm::setEditorFontSize,
-            valueRange = 10f..24f,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        // 缩进宽度:滑块独占一行
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_tab_size)) },
             supportingContent = {
                 Text(stringResource(R.string.settings_value, state.editorTabSize))
+            },
+            trailingContent = {
+                Slider(
+                    value = state.editorTabSize.toFloat(),
+                    onValueChange = { vm.setEditorTabSize(it.toInt()) },
+                    valueRange = 2f..8f,
+                    steps = 5,
+                    modifier = Modifier.fillMaxWidth(0.5f)
+                )
             }
-        )
-        Slider(
-            value = state.editorTabSize.toFloat(),
-            onValueChange = { vm.setEditorTabSize(it.toInt()) },
-            valueRange = 2f..8f,
-            steps = 5,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.action_auto_save)) },
@@ -485,31 +496,137 @@ fun SettingsScreen(
                 Switch(checked = state.resourceCacheEnabled, onCheckedChange = vm::setResourceCache)
             }
         )
+        // 清理缓存资源:单击=选择清理位置;长按=全部清除
+        var showCachePicker by remember { mutableStateOf(false) }
+        var cacheChecked by remember { mutableStateOf(setOf<String>()) }
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_cache_cleanup)) },
             supportingContent = {
-                val stats = state.cacheStats
-                Text(
-                    if (stats != null) {
-                        stringResource(
-                            R.string.settings_cache_size,
-                            stats.resourceCount,
-                            formatBytes(stats.totalBytes)
-                        )
-                    } else {
-                        stringResource(R.string.settings_cache_empty)
+                Column {
+                    val stats = state.cacheStats
+                    Text(
+                        if (stats != null) {
+                            stringResource(
+                                R.string.settings_cache_size,
+                                stats.resourceCount,
+                                formatBytes(stats.totalBytes)
+                            )
+                        } else {
+                            stringResource(R.string.settings_cache_empty)
+                        }
+                    )
+                    Text(
+                        stringResource(R.string.settings_cache_long_press),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    enabled = state.cacheStats != null,
+                    onClick = {
+                        // 单击:刷新位置明细并弹出选择对话框
+                        vm.refreshCacheStats()
+                        cacheChecked = emptySet()
+                        showCachePicker = true
+                    },
+                    onLongClick = {
+                        // 长按:一键全部清除
+                        vm.clearResourceCache()
                     }
                 )
-            },
-            trailingContent = {
-                TextButton(
-                    onClick = vm::clearResourceCache,
-                    enabled = state.cacheStats != null
-                ) {
-                    Text(stringResource(R.string.settings_cache_clear_btn))
-                }
-            }
         )
+        // 缓存位置选择对话框(仅列出非空位置)
+        if (showCachePicker) {
+            AlertDialog(
+                onDismissRequest = { showCachePicker = false },
+                title = { Text(stringResource(R.string.settings_cache_select_title)) },
+                text = {
+                    if (state.cacheLocations.isEmpty()) {
+                        Text(stringResource(R.string.settings_cache_select_empty))
+                    } else {
+                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                            state.cacheLocations.forEach { loc ->
+                                val key = loc.cacheDir.absolutePath
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            cacheChecked = if (key in cacheChecked) {
+                                                cacheChecked - key
+                                            } else {
+                                                cacheChecked + key
+                                            }
+                                        }
+                                        .padding(vertical = 8.dp)
+                                ) {
+                                    Checkbox(
+                                        checked = key in cacheChecked,
+                                        onCheckedChange = {
+                                            cacheChecked = if (it) cacheChecked + key else cacheChecked - key
+                                        }
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = loc.cacheDir.parentFile?.name ?: loc.cacheDir.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.cache_location_label,
+                                                loc.resourceCount,
+                                                formatBytes(loc.totalBytes)
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showCachePicker = false
+                            val selected = state.cacheLocations
+                                .filter { it.cacheDir.absolutePath in cacheChecked }
+                                .map { it.cacheDir }
+                            vm.clearCacheLocations(selected)
+                        },
+                        enabled = cacheChecked.isNotEmpty()
+                    ) {
+                        Text(stringResource(R.string.settings_cache_select_clear, cacheChecked.size))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCachePicker = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            )
+        }
+        // 缓存清理完成反馈(Snackbar)
+        val clearCacheFeedback by vm.clearCacheFeedback.collectAsStateWithLifecycle()
+        LaunchedEffect(clearCacheFeedback) {
+            clearCacheFeedback?.let { kind ->
+                snackbarHostState.showSnackbar(
+                    when (kind) {
+                        is SettingsViewModel.ClearCacheKind.ALL ->
+                            context.getString(R.string.settings_cache_cleared_all)
+                        is SettingsViewModel.ClearCacheKind.SELECTED ->
+                            context.getString(R.string.settings_cache_cleared_selected, kind.count)
+                    }
+                )
+                vm.consumeClearCacheFeedback()
+            }
+        }
         // 进入设置页时刷新缓存统计
         LaunchedEffect(Unit) {
             vm.refreshCacheStats()

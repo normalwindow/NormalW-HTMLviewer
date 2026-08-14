@@ -2,7 +2,25 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式,版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-> 说明:发布版本号(当前 `v1.1.1`)与本地 debug 开发版本号序列相互独立、互不通用。
+> 说明:发布版本号(当前 `v1.1.2`)与本地 debug 开发版本号序列相互独立、互不通用。
+
+## [1.1.2] - 2026-08-14
+
+### 修复
+
+- 应用图标重绘:去掉浏览器窗口白框,红黄绿三点上移,仅保留 `</>` 代码符号,更简洁醒目
+- README 图标改为透明背景圆角图(去除四周白边)
+- 设置页"语言/默认 UA"下拉菜单宽度取内容完整单行(IntrinsicSize.Max),不再把菜单文字挤成两行
+- 设置-编辑器"字号/缩进宽度"滑块恢复为与数值同行显示(1.1.0 布局)
+
+### 新增
+
+- "清理缓存资源"支持按位置选择清理:单击该栏弹出缓存位置列表(勾选后清理所选);长按该栏一键清除全部缓存
+- 设置-外观主题模式改为 Material3 分段按钮一行展示(跟随系统/浅色/深色),替代原三行单选列表
+
+### 发布
+
+- 本次 release 仅发布 **Lite 版**(`1.1.2-lite`,versionCode 4):仅系统 WebView,约 2.2 MB;Full 版仍为 1.1.0
 
 ## [1.1.1] - 2026-08-14
 
@@ -63,3 +81,4 @@
 [1.0.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.0.0
 [1.1.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.0
 [1.1.1]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.1
+[1.1.2]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.2

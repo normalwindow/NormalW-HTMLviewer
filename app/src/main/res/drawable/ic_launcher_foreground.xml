@@ -1,32 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 前景:浏览器窗口 + `</>` 代码符号,内容放大并居中于 108dp 自适应图标中心 -->
+<!-- 前景:红黄绿三点(上移) + `</>` 代码符号,简洁居中,无外框 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 浏览器窗口外框(圆角矩形,居中于安全区) -->
+    <!-- 红/黄/绿三点(顶部居中) -->
     <path
-        android:pathData="M21,33 h66 a8,8 0 0 1 8,8 v32 a8,8 0 0 1 -8,8 h-66 a8,8 0 0 1 -8,-8 v-32 a8,8 0 0 1 8,-8 z"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="4.5"
-        android:fillColor="#00000000" />
-
-    <!-- 窗口标题栏圆点(红/黄/绿) -->
-    <path
-        android:pathData="M29,42 a2.8,2.8 0 1 0 0.01,0 z"
+        android:pathData="M42,22 a3.2,3.2 0 1 0 0.01,0 z"
         android:fillColor="#FF8A80" />
     <path
-        android:pathData="M40,42 a2.8,2.8 0 1 0 0.01,0 z"
+        android:pathData="M51,22 a3.2,3.2 0 1 0 0.01,0 z"
         android:fillColor="#FFE082" />
     <path
-        android:pathData="M51,42 a2.8,2.8 0 1 0 0.01,0 z"
+        android:pathData="M60,22 a3.2,3.2 0 1 0 0.01,0 z"
         android:fillColor="#A5D6A7" />
 
     <!-- 左尖括号 < -->
     <path
-        android:pathData="M48,69 L36,58 L48,47"
+        android:pathData="M48,72 L36,58 L48,44"
         android:strokeColor="#FFFFFF"
         android:strokeWidth="5"
         android:strokeLineCap="round"
@@ -35,7 +28,7 @@
 
     <!-- 斜杠 / -->
     <path
-        android:pathData="M54,47 L66,69"
+        android:pathData="M54,44 L66,72"
         android:strokeColor="#FFFFFF"
         android:strokeWidth="5"
         android:strokeLineCap="round"
@@ -43,7 +36,7 @@
 
     <!-- 右尖括号 > -->
     <path
-        android:pathData="M60,69 L72,58 L60,47"
+        android:pathData="M60,72 L72,58 L60,44"
         android:strokeColor="#FFFFFF"
         android:strokeWidth="5"
         android:strokeLineCap="round"
