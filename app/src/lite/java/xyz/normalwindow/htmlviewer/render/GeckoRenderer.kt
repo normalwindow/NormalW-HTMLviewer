@@ -36,9 +36,9 @@ class GeckoRenderer(
     override fun setStateListener(listener: RendererStateListener?) = Unit
     override fun setScrollListener(listener: RendererScrollListener?) = Unit
 
-    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit) = Unit
+    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit) = Unit
 
-    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?) = Unit
+    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit)?) = Unit
     override fun setTouchpadMode(enabled: Boolean) = Unit
     override fun setConsoleListener(listener: RendererConsoleListener?) = Unit
     override fun setResourceCache(enabled: Boolean) = Unit

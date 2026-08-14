@@ -184,16 +184,18 @@ interface Renderer {
     fun setScrollListener(listener: RendererScrollListener?)
 
     /**
-     * 查询页面尺寸(内容总高/视口高,回调于主线程;不支持时为 no-op)。
+     * 查询页面尺寸与滚动位置(内容总高/视口高/当前滚动,回调于主线程;不支持时为 no-op)。
+     * 注意:全部使用 JS 坐标系(CSS 像素)——WebView 无 viewport meta 时页面存在缩放,
+     * 原生 onScrollChanged 的像素与 window.scrollTo 的 CSS 像素不一致,必须统一用 JS 值。
      * 右侧滚动条的 thumb 比例计算用。
      */
-    fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit)
+    fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit)
 
     /**
      * 设置页面尺寸监听:页面加载完成与滚动(节流)后自动查询并回调;
      * 传 null 停止。右侧滚动条的 thumb 比例计算用。
      */
-    fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?)
+    fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit)?)
 
     /**
      * 模拟鼠标(触摸板模式):单指滑动移动光标并产生 hover,轻点=左键单击,
@@ -486,14 +488,15 @@ class WebViewRenderer(
         scrollListener = listener
     }
 
-    /** 查询页面尺寸:内容总高/视口高(主线程回调;右侧滚动条 thumb 比例用) */
-    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit) {
+    /** 查询页面尺寸与滚动位置(JS 坐标系,回调主线程;右侧滚动条 thumb 比例用) */
+    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit) {
         val script = """
             (function () {
               var d = document.documentElement || document.body;
               return JSON.stringify({
                 sh: d.scrollHeight || 0,
-                ch: window.innerHeight || d.clientHeight || 0
+                ch: window.innerHeight || d.clientHeight || 0,
+                st: window.pageYOffset || d.scrollTop || 0
               });
             })();
         """.trimIndent()
@@ -507,23 +510,24 @@ class WebViewRenderer(
                     val obj = org.json.JSONObject(text)
                     val sh = obj.optInt("sh")
                     val ch = obj.optInt("ch")
-                    if (sh > 0 && ch > 0) callback(sh, ch)
+                    val st = obj.optInt("st")
+                    if (sh > 0 && ch > 0) callback(sh, ch, st)
                 }
             }
         }
     }
 
     /** 页面尺寸监听(加载完成/滚动节流后自动查询) */
-    private var pageMetricsListener: ((scrollHeight: Int, clientHeight: Int) -> Unit)? = null
+    private var pageMetricsListener: ((scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit)? = null
 
     /** 滚动节流用:距离上次查询的时间戳 */
     private var lastMetricsQueryAt = 0L
 
-    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?) {
+    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit)?) {
         pageMetricsListener = listener
         if (listener != null) {
             // 立即查询一次当前尺寸
-            queryPageMetrics { sh, ch -> listener(sh, ch) }
+            queryPageMetrics { sh, ch, st -> listener(sh, ch, st) }
         }
     }
 
@@ -533,7 +537,7 @@ class WebViewRenderer(
         if (now - lastMetricsQueryAt < 250) return
         lastMetricsQueryAt = now
         val listener = pageMetricsListener ?: return
-        queryPageMetrics { sh, ch -> listener(sh, ch) }
+        queryPageMetrics { sh, ch, st -> listener(sh, ch, st) }
     }
 
     override fun setTouchpadMode(enabled: Boolean) {

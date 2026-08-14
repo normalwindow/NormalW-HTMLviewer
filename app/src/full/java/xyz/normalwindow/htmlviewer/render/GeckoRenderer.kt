@@ -174,11 +174,11 @@ class GeckoRenderer(
         scrollListener = listener
     }
 
-    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int) -> Unit) {
+    override fun queryPageMetrics(callback: (scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit) {
         // GeckoView 无公共 JS API,不支持(右侧滚动条在 Gecko 内核下禁用)
     }
 
-    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int) -> Unit)?) = Unit
+    override fun setPageMetricsListener(listener: ((scrollHeight: Int, clientHeight: Int, scrollTop: Int) -> Unit)?) = Unit
 
     override fun setTouchpadMode(enabled: Boolean) {
         // GeckoView 无 evaluateJavascript/WebExtension 消息通道,不支持模拟鼠标

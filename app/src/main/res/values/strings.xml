@@ -235,7 +235,7 @@
     <string name="browser_touchpad_desc">单击点击、双指滑动</string>
     <string name="browser_console">控制台</string>
     <string name="browser_scrollbar">右侧滚动条</string>
-    <string name="browser_scrollbar_desc">编辑器同款大滑动条,拖动快速滚动页面</string>
+    <string name="browser_scrollbar_desc">拖动或点击快速滚动页面</string>
     <string name="browser_console_desc">收集 console 日志与页面错误</string>
     <string name="browser_console_gecko_note">Gecko 内核仅支持页面加载错误</string>
     <string name="browser_console_title">控制台与错误</string>

@@ -76,11 +76,11 @@ class BrowserViewModel @Inject constructor(
         val scrollbarEnabled: Boolean = true,
         /** 当前内核是否支持页面尺寸查询(Gecko 不支持时禁用滑动条) */
         val scrollbarSupported: Boolean = false,
-        /** 页面当前滚动位置 */
-        val scrollY: Int = 0,
-        /** 页面内容总高(右侧滑动条 thumb 比例计算) */
+        /** 页面当前滚动位置(JS 坐标系,CSS 像素;与 scrollTo 同一坐标系) */
+        val scrollTop: Int = 0,
+        /** 页面内容总高(JS 坐标系;右侧滑动条 thumb 比例计算) */
         val pageHeight: Int = 1,
-        /** 页面视口高 */
+        /** 页面视口高(JS 坐标系) */
         val viewportHeight: Int = 1,
         /** 控制台/错误日志(最多保留 200 条) */
         val consoleEntries: List<ConsoleEntry> = emptyList(),
@@ -151,17 +151,17 @@ class BrowserViewModel @Inject constructor(
                     _state.update { it.copy(canGoBack = canGoBack, canGoForward = canGoForward) }
                 }
             })
-            // 页面滚动:内容滑过顶部时 header 变透明;右侧滑动条 thumb 跟随
+            // 页面滚动:内容滑过顶部时 header 变透明(原生信号,仅作状态);thumb 比例用 JS 坐标系
             r.setScrollListener(object : RendererScrollListener {
                 override fun onScrollChanged(scrollX: Int, scrollY: Int) {
                     _state.update {
-                        it.copy(pageScrolled = scrollY > 0, scrollY = scrollY)
+                        it.copy(pageScrolled = scrollY > 0)
                     }
                 }
             })
-            // 页面加载完成后查询尺寸,供右侧滑动条计算 thumb 比例
-            r.setPageMetricsListener { sh, ch ->
-                _state.update { it.copy(pageHeight = sh, viewportHeight = ch) }
+            // 页面加载完成/滚动后查询尺寸与滚动位置(JS 坐标系,thumb 比例计算)
+            r.setPageMetricsListener { sh, ch, st ->
+                _state.update { it.copy(pageHeight = sh, viewportHeight = ch, scrollTop = st) }
             }
             r.setJavaScriptEnabled(prefs.jsEnabled)
             if (ua != UserAgentPreset.DEFAULT) {
@@ -233,12 +233,14 @@ class BrowserViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setBrowserScrollbar(next) }
     }
 
-    /** 按比例滚动页面(0..1):右侧滑动条拖动/点击轨道 */
+    /** 按比例滚动页面(0..1):右侧滑动条拖动/点击轨道。
+     * 目标在 JS 内计算(documentElement.scrollHeight - innerHeight),
+     * 与 window.scrollTo 同一坐标系,避免 WebView 缩放导致的像素不一致。 */
     fun scrollToRatio(ratio: Float) {
-        val s = _state.value
-        val maxScroll = (s.pageHeight - s.viewportHeight).coerceAtLeast(0)
-        if (maxScroll <= 0) return
-        renderer?.executeJs("window.scrollTo(0, ${(maxScroll * ratio.coerceIn(0f, 1f)).toInt()})")
+        if (!_state.value.ready) return
+        renderer?.executeJs(
+            "window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * ${ratio.coerceIn(0f, 1f)})"
+        )
     }
 
     /** 清空控制台日志 */

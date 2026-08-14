@@ -211,7 +211,7 @@ fun BrowserScreen(
             state.pageHeight > state.viewportHeight
         ) {
             PageScrollbar(
-                scrollY = state.scrollY,
+                scrollTop = state.scrollTop,
                 pageHeight = state.pageHeight,
                 viewportHeight = state.viewportHeight,
                 onScrollRatio = vm::scrollToRatio,
@@ -743,21 +743,23 @@ private fun consoleLevelLabel(level: ConsoleLevel): String = stringResource(
 )
 
 /**
- * 右侧大滑动条(编辑器同款):
- * - thumb 高度 = 视口/内容比例,位置跟随页面滚动
+ * 右侧大滑动条(与编辑器 CodeMirror 版 1:1 还原):
+ * - 40dp 宽透明触摸区(无轨道线),thumb 左右 6dp → 宽 28dp
+ * - thumb:圆角 8dp,灰色 rgba(128,128,128,.4),拖动时加深 .65,最小高 32dp
+ * - thumb 位置 = (轨道高-thumb高) × 滚动比例,从顶部定位(offset 叠加修正)
  * - 拖动 thumb 快速滚动页面;点击轨道跳转到对应位置
  * - 页面不可滚动时由调用方隐藏
  */
 @Composable
 private fun PageScrollbar(
-    scrollY: Int,
+    scrollTop: Int,
     pageHeight: Int,
     viewportHeight: Int,
     onScrollRatio: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val maxScroll = (pageHeight - viewportHeight).coerceAtLeast(1)
-    val pageRatio = (scrollY.toFloat() / maxScroll).coerceIn(0f, 1f)
+    val pageRatio = (scrollTop.toFloat() / maxScroll).coerceIn(0f, 1f)
     var dragging by remember { mutableStateOf(false) }
     var dragRatio by remember { mutableFloatStateOf(pageRatio) }
     // 非拖动时 thumb 跟随页面滚动
@@ -767,24 +769,15 @@ private fun PageScrollbar(
 
     BoxWithConstraints(
         modifier = modifier
-            .width(28.dp)
+            .width(40.dp)
             .fillMaxHeight()
     ) {
         val trackH = maxHeight
         val thumbFraction = (viewportHeight.toFloat() / pageHeight).coerceIn(0.05f, 1f)
-        val thumbH = trackH * thumbFraction
+        val thumbH = (trackH * thumbFraction).coerceAtLeast(32.dp)
         val thumbTop = (trackH - thumbH) * dragRatio
 
-        // 轨道(细条,居中)
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .width(4.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(2.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
-        // 轨道点击跳转(覆盖整条区域,thumb 在上层会优先响应拖动)
+        // 轨道点击跳转(覆盖整个触摸区,thumb 在上层优先响应拖动)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -794,15 +787,18 @@ private fun PageScrollbar(
                     }
                 }
         )
-        // thumb(可拖动)
+        // thumb:从顶部定位 + offset(不能 align(Center),否则与 offset 叠加偏移错位)
         Box(
             modifier = Modifier
-                .align(Alignment.Center)
+                .align(Alignment.TopCenter)
                 .offset(y = thumbTop)
-                .width(10.dp)
+                .padding(horizontal = 6.dp)
+                .fillMaxWidth()
                 .height(thumbH)
-                .clip(RoundedCornerShape(5.dp))
-                .background(MaterialTheme.colorScheme.primary)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (dragging) Color(0xA6808080) else Color(0x66808080)
+                )
                 .pointerInput(pageHeight, viewportHeight) {
                     detectDragGestures(
                         onDragStart = { dragging = true },
