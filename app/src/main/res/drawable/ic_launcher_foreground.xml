@@ -1,51 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 前景:浏览器窗口 + `</>` 代码符号(置于 108dp 自适应图标安全区内) -->
+<!-- 前景:浏览器窗口 + `</>` 代码符号,内容放大并居中于 108dp 自适应图标中心 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 浏览器窗口外框(圆角矩形) -->
+    <!-- 浏览器窗口外框(圆角矩形,居中于安全区) -->
     <path
-        android:pathData="M22,34 h64 a6,6 0 0 1 6,6 v32 a6,6 0 0 1 -6,6 h-64 a6,6 0 0 1 -6,-6 v-32 a6,6 0 0 1 6,-6 z"
+        android:pathData="M21,33 h66 a8,8 0 0 1 8,8 v32 a8,8 0 0 1 -8,8 h-66 a8,8 0 0 1 -8,-8 v-32 a8,8 0 0 1 8,-8 z"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="4"
+        android:strokeWidth="4.5"
         android:fillColor="#00000000" />
 
     <!-- 窗口标题栏圆点(红/黄/绿) -->
     <path
-        android:pathData="M29,41 a2.5,2.5 0 1 0 0.01,0 z"
+        android:pathData="M29,42 a2.8,2.8 0 1 0 0.01,0 z"
         android:fillColor="#FF8A80" />
     <path
-        android:pathData="M38,41 a2.5,2.5 0 1 0 0.01,0 z"
+        android:pathData="M40,42 a2.8,2.8 0 1 0 0.01,0 z"
         android:fillColor="#FFE082" />
     <path
-        android:pathData="M47,41 a2.5,2.5 0 1 0 0.01,0 z"
+        android:pathData="M51,42 a2.8,2.8 0 1 0 0.01,0 z"
         android:fillColor="#A5D6A7" />
 
     <!-- 左尖括号 < -->
     <path
-        android:pathData="M38,63 L28,54 L38,45"
+        android:pathData="M48,69 L36,58 L48,47"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="4.5"
+        android:strokeWidth="5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000" />
 
     <!-- 斜杠 / -->
     <path
-        android:pathData="M46,42 L56,66"
+        android:pathData="M54,47 L66,69"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="4.5"
+        android:strokeWidth="5"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
 
     <!-- 右尖括号 > -->
     <path
-        android:pathData="M52,63 L62,54 L52,45"
+        android:pathData="M60,69 L72,58 L60,47"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="4.5"
+        android:strokeWidth="5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000" />

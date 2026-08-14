@@ -356,34 +356,36 @@ fun SettingsScreen(
         // ---------- 编辑器 ----------
         SectionTitle(stringResource(R.string.settings_section_editor))
 
+        // 字号:滑块独占一行,避免与标题/数值挤在一行导致文字折行
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_font_size)) },
             supportingContent = {
                 Text(stringResource(R.string.settings_value, state.editorFontSize.toInt()))
-            },
-            trailingContent = {
-                Slider(
-                    value = state.editorFontSize,
-                    onValueChange = vm::setEditorFontSize,
-                    valueRange = 10f..24f,
-                    modifier = Modifier.fillMaxWidth(0.5f)
-                )
             }
         )
+        Slider(
+            value = state.editorFontSize,
+            onValueChange = vm::setEditorFontSize,
+            valueRange = 10f..24f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+        // 缩进宽度:滑块独占一行
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_tab_size)) },
             supportingContent = {
                 Text(stringResource(R.string.settings_value, state.editorTabSize))
-            },
-            trailingContent = {
-                Slider(
-                    value = state.editorTabSize.toFloat(),
-                    onValueChange = { vm.setEditorTabSize(it.toInt()) },
-                    valueRange = 2f..8f,
-                    steps = 5,
-                    modifier = Modifier.fillMaxWidth(0.5f)
-                )
             }
+        )
+        Slider(
+            value = state.editorTabSize.toFloat(),
+            onValueChange = { vm.setEditorTabSize(it.toInt()) },
+            valueRange = 2f..8f,
+            steps = 5,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
         )
         ListItem(
             headlineContent = { Text(stringResource(R.string.action_auto_save)) },

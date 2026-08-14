@@ -2,7 +2,20 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式,版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-> 说明:发布版本号(当前 `v1.1.0`)与本地 debug 开发版本号序列相互独立、互不通用。
+> 说明:发布版本号(当前 `v1.1.1`)与本地 debug 开发版本号序列相互独立、互不通用。
+
+## [1.1.1] - 2026-08-14
+
+### 修复
+
+- 设置-编辑器"字号/缩进宽度"滑块改为独占一行,不再与标题/数值挤在一行导致文字折行
+- 关于页"开源许可证"可点击,跳转浏览器打开 Apache-2.0 官方许可页面
+- 应用图标重绘:浏览器窗口与 `</>` 符号放大并居中(自适应图标安全区内),视觉更饱满;关于页图标前景与背景同尺寸显示
+- 新增英文版 README(`README_EN.md`),README 开头居中展示应用图标与版本徽章,支持中/英切换
+
+### 发布
+
+- 本次 release 仅发布 **Lite 版**(`1.1.1-lite`,versionCode 3):仅系统 WebView,约 2.2 MB;Full 版仍为 1.1.0
 
 ## [1.1.0] - 2026-08-14
 
@@ -49,3 +62,4 @@
 
 [1.0.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.0.0
 [1.1.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.0
+[1.1.1]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.1

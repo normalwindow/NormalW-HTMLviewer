@@ -85,7 +85,8 @@ fun AboutScreen(onBack: () -> Unit) {
                 Image(
                     painter = painterResource(R.drawable.ic_launcher_foreground),
                     contentDescription = null,
-                    modifier = Modifier.size(72.dp)
+                    // 前景与背景同尺寸:图标内容完整呈现,不再因缩小而显得内容过小
+                    modifier = Modifier.size(96.dp)
                 )
             }
             Spacer(Modifier.height(16.dp))
@@ -122,11 +123,18 @@ fun AboutScreen(onBack: () -> Unit) {
                 }
             )
             HorizontalDivider()
-            // 开源许可
+            // 开源许可(点击浏览器打开 Apache-2.0 官方页面)
             ListItem(
                 headlineContent = { Text(stringResource(R.string.about_license)) },
                 supportingContent = { Text(stringResource(R.string.about_license_value)) },
-                leadingContent = { Icon(Icons.Filled.Info, contentDescription = null) }
+                leadingContent = { Icon(Icons.Filled.Info, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://www.apache.org/licenses/LICENSE-2.0"))
+                        )
+                    }
+                }
             )
             HorizontalDivider()
             // 技术栈
