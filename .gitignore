@@ -18,6 +18,8 @@ local.properties
 
 # ===================== 签名密钥(严禁入库) =====================
 *.jks
+# 百度网盘开放平台凭据(个人凭据,严禁入库;应用内设置页填写)
+tool/baidu-key.txt
 *.keystore
 keystore.properties
 
@@ -35,3 +37,4 @@ AppLog/
 *.log
 .reasonix/
 tool/
+.zcode/

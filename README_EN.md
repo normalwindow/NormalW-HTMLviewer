@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.5-blue">
+  <img src="https://img.shields.io/badge/version-1.2.0-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -63,6 +63,7 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 │   ├── file/        FileRepository + encoding detection + recycle bin
 │   ├── template/    built-in template library (assets/templates)
 │   ├── update/      update checker (GitHub Releases Atom/API)
+│   ├── cloud/       cloud drives (Baidu Netdisk/WebDAV providers + two-way sync engine + snapshot)
 │   └── di/          Hilt modules
 ├── render/          Renderer abstraction: WebViewRenderer / GeckoRenderer
 ├── ui/
@@ -97,12 +98,13 @@ Render engines are abstracted behind the `Renderer` interface: preview picks lig
 
 > Release builds use the debug signing key by default for local installs; configure a real keystore in `signingConfigs` before publishing.
 
-## Release (v1.1.4)
+## Release (v1.2.0)
 
 - Artifacts are published on [GitHub Releases](https://github.com/normalwindow/NormlW-HTMLviewer/releases), split by ABI (arm64-v8a / armeabi-v7a / x86 / x86_64). **Download the arm64-v8a package** for most mainstream devices.
 - Two editions:
-  - **Full** (`1.1.0`): includes GeckoView compatibility engine, full features (~185 MB)
-  - **Lite** (`1.1.4-lite`): system WebView only, ~99% smaller (~2.2 MB), no compatibility mode
+  - **Full** (`1.2.0`): includes GeckoView compatibility engine, full features (~45 MB per ABI)
+  - **Lite** (`1.2.0-lite`): system WebView only, ~99% smaller (~2.2 MB), no compatibility mode; shipped as a single universal APK (all ABIs)
+- **v1.2.0 highlights**: Baidu Netdisk (official xpan API + OAuth2) and WebDAV integration; local⇄cloud browsing toggle on the home screen; snapshot-driven two-way sync with per-conflict dialogs (newer-wins / keep-both); see [CHANGELOG.md](CHANGELOG.md)
 - Built-in "Check for Updates" in Settings → About detects new releases and opens the download link (Atom feed source, works on domestic networks).
 - See [CHANGELOG.md](CHANGELOG.md) for version history.
 
@@ -132,12 +134,23 @@ npm run build        # outputs to app/src/main/assets/editor/
 - [x] File/folder import (SAF)
 - [x] English version (instant switch in settings)
 - [x] Check for app updates via GitHub Releases (Atom source)
-- [ ] Baidu Netdisk API sync
+- [x] Baidu Netdisk API sync (official xpan API + OAuth2, in-app authorization)
+- [x] Generic WebDAV protocol (Nextcloud, Jianguoyun, Synology, etc.)
+- [ ] Other protocols (SFTP/SMB) via the CloudProvider abstraction
+
+## Cloud Sync (new in 1.2.0)
+
+- **Cloud drives**: Baidu Netdisk (official xpan REST API + OAuth2, in-app WebView authorization with oob auth-code capture, automatic token refresh) and WebDAV (Basic auth). Credentials are injected at build time from `tool/baidu-key.txt` when present and can be overridden in Settings.
+- **Local/Cloud switch**: toggle in the home top bar to browse cloud folders; tapping a cloud file downloads it to a local cache and opens it, saving uploads back to the cloud automatically.
+- **Drive switching**: switch the active drive from Settings or the cloud menu; credentials for each drive are stored independently.
+- **Two-way sync**: full-library sync between the local workspace and the cloud root, driven by a sync snapshot to tell which side changed. Conflicts default to **ask every time** (keep local/cloud/skip per file); "newer wins" and "keep both" (`name (conflict-timestamp).ext`) policies are available. Deletions propagate both ways (local side goes to the recoverable trash).
+- **Sync settings**: sync now (progress/result dialogs), conflict policy, auto upload on save, auto sync on launch, last sync time, WebDAV connection test.
 
 ## Known Limitations
 
 - GeckoView has no public `evaluateJavascript`/console/request-interception API (needs WebExtension); simulated mouse, console collection and offline caching work only with the system WebView engine. Gecko uses a persistent disk cache (HTTP cache headers still take priority).
 - The file root is the app-private directory (`Android/data/<pkg>/files/HTMLviewer`), no storage permission needed; external directory browsing (SAF) is not implemented.
+- Cloud sync: Baidu default remote folder is `/apps/HTMLviewer/` (sandbox limit, configurable in Settings); sibling static assets of a cloud HTML file are not auto-downloaded; HTTPS is recommended for WebDAV (cleartext HTTP allowed for LAN); the access token is valid for 30 days per grant (platform limit) and is auto-renewed with the refresh token on launch/use — regular app usage keeps it alive indefinitely.
 - GeckoView cannot load `file:///android_asset/`; in-memory HTML preview uses `Loader.data()` (relative resource paths are not resolved in split preview).
 
 ## License

@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.5-blue">
+  <img src="https://img.shields.io/badge/version-1.2.0-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -37,6 +37,7 @@
 - **人性化设置**:主题(跟随系统/浅色/深色 + 动态取色)、8 种 Material3 配色方案(TonalSpot/Neutral/Vibrant/Expressive/Rainbow/FruitSalad/Monochrome/Fidelity)、自定义主题色、编辑器字号/缩进/自动保存/自动换行、沉浸模式
 - **多语言**:支持简体中文与 English,可在设置中即时切换(跟随系统/中文/English)
 - **应用内置更新检测**:设置-关于"检查更新",通过 GitHub Releases Atom 检测新版本(自动匹配 Full/Lite 与设备 ABI 的下载直链,国内网络可用)
+- **云同步(1.2.0 新增)**:接入百度网盘(官方 xpan API + OAuth2 应用内授权)与 WebDAV(坚果云/Nextcloud 等);主页"本地 ⇄ 云端"一键切换浏览,云端文件点开即下载缓存、保存自动上传;整库双向同步基于同步快照,冲突默认弹窗逐个询问,支持"新者胜/保留双方"策略与删除双向传播
 - **国内环境适配**:Gradle 依赖全部走阿里云镜像;默认简体中文,支持 English
 
 <p align="center">
@@ -64,12 +65,14 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 │   ├── file/        FileRepository + 编码检测 + 回收站
 │   ├── template/    内置模板库(assets/templates)
 │   ├── update/       更新检测(GitHub Releases Atom/API)
+│   ├── cloud/       云盘接入(百度网盘/WebDAV Provider + 双向同步引擎 + 快照)
 │   └── di/          Hilt 模块
 ├── render/          Renderer 抽象:WebViewRenderer / GeckoRenderer
 ├── ui/
 │   ├── home/        文件管理首页(四页签 + 多选 + 批量操作 + 导入)
 │   ├── editor/      CodeMirror 编辑器 + 全屏/分屏预览
-│   ├── settings/    设置中心(内核/外观/编辑器/预览/语言)
+│   ├── settings/    设置中心(内核/外观/编辑器/预览/云同步/语言)
+│   ├── cloud/       云同步共用组件(授权对话框/冲突对话框/进度对话框)
 │   ├── about/       关于页(应用信息/GitHub/许可/技术栈)
 │   ├── navigation/  NavHost(home / about / editor / preview)
 │   └── components/  通用组件(空态/骨架屏/文件行)
@@ -98,12 +101,13 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 
 > NOTE: Release 产物默认使用 debug 签名,便于本地直接构建安装;正式上架请在 `signingConfigs` 中配置正式 keystore 并替换 `build.gradle.kts` 中的引用。
 
-## Release(发布版本 v1.1.4)
+## Release(发布版本 v1.2.0)
 
 - 发布产物位于 [GitHub Releases](https://github.com/normalwindow/NormlW-HTMLviewer/releases),按 ABI 拆分(arm64-v8a / armeabi-v7a / x86 / x86_64),**仅需下载 arm64-v8a 包**即可在绝大多数主流设备安装
 - 提供两种发行版:
-  - **Full 版**(`1.1.0`):含 GeckoView 兼容内核,功能完整(约 185 MB)
-  - **Lite 版**(`1.1.5-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式
+  - **Full 版**(`1.2.0`):含 GeckoView 兼容内核,功能完整(约 45 MB/ABI)
+  - **Lite 版**(`1.2.0-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式;发布为单一 universal 包(兼容所有 ABI)
+- **v1.2.0 亮点**:接入百度网盘(官方 xpan API + OAuth2)与 WebDAV;主页"本地 ⇄ 云端"切换,云端文件点开即编、保存自动回传;整库双向同步(冲突可弹窗逐个询问,支持新者胜/保留双方);详见 [CHANGELOG.md](CHANGELOG.md)
 - 应用内"设置-关于-检查更新"可自动检测新版本并跳转下载(Atom 源,国内网络可用)
 - 版本变更记录见 [CHANGELOG.md](CHANGELOG.md)
 
@@ -133,11 +137,11 @@ npm run build        # 产物写入 app/src/main/assets/editor/
 - [x] 文件/文件夹导入(SAF)
 - [x] English Version(设置内即时切换)
 - [x] 使用 GitHub 检测应用更新(Atom 源,检查 Releases 最新版本并提示下载)
-- [ ] 接入百度网盘api实现同步
+- [x] 接入百度网盘api实现同步(官方 xpan API + OAuth2,应用内授权)
 - [ ] 实现外部目录浏览(SAF 完整支持)
 - [ ] 重构 CodeMirror 构建流程,合并到主构建流程中
 - [ ] 优化 Full 版体积,轻量替代方案(WebKit 的某些组件？)
-- [ ] 采用更通用的 WebDAV 协议,兼容 Nextcloud、坚果云等多家服务
+- [x] 采用更通用的 WebDAV 协议,兼容 Nextcloud、坚果云等多家服务
 - [ ] 考虑插件系统,CodeMirror 6 本身支持扩展,可以开放插件接口
 
 
@@ -145,6 +149,7 @@ npm run build        # 产物写入 app/src/main/assets/editor/
 
 - GeckoView 无公共 `evaluateJavascript`/console/请求拦截 API(需 WebExtension),模拟鼠标、控制台收集、离线资源缓存仅系统 WebView 内核支持;Gecko 内核使用持久磁盘缓存(HTTP 缓存头仍优先)
 - 文件根目录为应用专属目录(`Android/data/<pkg>/files/HTMLviewer`),无需存储权限;外部目录浏览(Saf)未实现
+- 云同步:百度网盘默认远端目录 `/apps/HTMLviewer`(沙箱限制,可在设置中修改);云端 HTML 的同级静态资源不随文件自动下载;WebDAV 建议使用 HTTPS(局域网 http 已放行);access_token 单次有效期 30 天(平台限制),应用启动/操作时用 refresh_token 自动续期,定期打开应用即可长期有效
 - GeckoView 无法加载 `file:///android_asset/`,内存 HTML 预览用 `Loader.data()` 加载(相对资源路径在分屏预览中不解析)
 
 ## 许可证
