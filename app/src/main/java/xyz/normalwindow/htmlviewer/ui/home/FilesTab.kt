@@ -32,17 +32,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -73,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import xyz.normalwindow.htmlviewer.R
+import xyz.normalwindow.htmlviewer.data.cloud.CloudFile
 import xyz.normalwindow.htmlviewer.data.file.FileItem
 import xyz.normalwindow.htmlviewer.ui.components.EmptyState
 import xyz.normalwindow.htmlviewer.ui.components.FileActionMenu
@@ -146,8 +152,10 @@ fun FilesTab(
                 )
             }
 
-            // 内容区
-            when {
+            // 内容区:云端浏览(云本地切换)/ 本地文件
+            if (state.dataSource == DataSource.CLOUD) {
+                CloudContent(state = state, vm = vm)
+            } else when {
                 state.loading -> SkeletonList(modifier = Modifier.padding(top = 8.dp))
                 items.isEmpty() -> EmptyState(
                     icon = if (state.query.isNotEmpty()) Icons.Outlined.Code else Icons.Filled.FolderOpen,
@@ -259,9 +267,10 @@ fun FilesTab(
             }
         }
 
-        // 底部多选操作栏
+        // 底部多选操作栏(云端模式无多选)
         AnimatedVisibility(
-            visible = state.selection.isNotEmpty() && state.batchMode == null,
+            visible = state.selection.isNotEmpty() && state.batchMode == null &&
+                state.dataSource == DataSource.LOCAL,
             modifier = Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut()
@@ -276,8 +285,10 @@ fun FilesTab(
             )
         }
 
-        // 新建 FAB(多选/批量模式时隐藏,避免遮挡底部操作栏)
-        if (state.batchMode == null && state.selection.isEmpty()) {
+        // 新建 FAB(多选/批量/云端模式时隐藏,避免遮挡底部操作栏)
+        if (state.batchMode == null && state.selection.isEmpty() &&
+            state.dataSource == DataSource.LOCAL
+        ) {
             FloatingActionButton(
                 onClick = { showCreateSheet = true },
                 modifier = Modifier
@@ -292,6 +303,7 @@ fun FilesTab(
     // 返回页面时自动刷新文件列表(编辑器/预览保存后大小/内容立即更新)
     LifecycleResumeEffect(Unit) {
         vm.refresh()
+        if (state.dataSource == DataSource.CLOUD) vm.refreshCloud()
         onPauseOrDispose { }
     }
 
@@ -656,6 +668,149 @@ private fun FileGrid(
             }
         }
     }
+}
+
+// ---------- 云端浏览 ----------
+
+/** 云端目录列表:点击进入目录/下载打开,行内菜单提供打开/下载到本地/删除 */
+@Composable
+private fun CloudContent(state: HomeUiState, vm: HomeViewModel) {
+    when {
+        state.cloudLoading -> SkeletonList(modifier = Modifier.padding(top = 8.dp))
+        state.cloudItems.isEmpty() -> EmptyState(
+            icon = Icons.Filled.CloudQueue,
+            title = stringResource(R.string.cloud_empty_title),
+            hint = stringResource(R.string.cloud_empty_hint)
+        )
+        else -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            items(state.cloudItems, key = { it.path }) { item ->
+                var menuOpen by remember { mutableStateOf(false) }
+                CloudFileRow(
+                    item = item,
+                    onClick = { vm.openCloudFile(item) },
+                    onMoreClick = { menuOpen = true },
+                    menuContent = {
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            if (!item.isDir) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.cloud_open)) },
+                                    onClick = {
+                                        menuOpen = false
+                                        vm.openCloudFile(item)
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.Description, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.cloud_download)) },
+                                    onClick = {
+                                        menuOpen = false
+                                        vm.downloadCloudToLocal(item)
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.FileDownload, null) }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.cloud_delete_remote)) },
+                                onClick = {
+                                    menuOpen = false
+                                    vm.deleteCloudFile(item)
+                                },
+                                leadingIcon = { Icon(Icons.Filled.Delete, null) }
+                            )
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+/** 云端文件行(结构同 FileRow,图标固定云朵底色区分) */
+@Composable
+private fun CloudFileRow(
+    item: CloudFile,
+    onClick: () -> Unit,
+    onMoreClick: () -> Unit,
+    menuContent: @Composable () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    if (item.isDir) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.secondaryContainer
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (item.isDir) Icons.Filled.Folder else Icons.Filled.Description,
+                contentDescription = null,
+                tint = if (item.isDir) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.secondary
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = if (item.isDir) {
+                    stringResource(R.string.cloud_toggle_cloud)
+                } else {
+                    "${cloudFormatSize(item.size)} · ${cloudFormatTime(item.mtime)}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Box {
+            IconButton(onClick = onMoreClick) {
+                Icon(
+                    imageVector = Icons.Filled.MoreVert,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            menuContent()
+        }
+    }
+}
+
+private fun cloudFormatSize(bytes: Long): String = when {
+    bytes >= 1024 * 1024 -> String.format(Locale.US, "%.1f MB", bytes / 1048576.0)
+    bytes >= 1024 -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
+    else -> "$bytes B"
+}
+
+/** epoch 秒 → "yyyy-MM-dd HH:mm" */
+private fun cloudFormatTime(epochSec: Long): String {
+    if (epochSec <= 0) return "-"
+    return java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        .format(java.util.Date(epochSec * 1000))
 }
 
 // ---------- 工具 ----------

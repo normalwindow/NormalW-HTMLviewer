@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import xyz.normalwindow.htmlviewer.data.cloud.CloudManager
+import xyz.normalwindow.htmlviewer.data.cloud.CloudProviderType
+import xyz.normalwindow.htmlviewer.data.cloud.SnapshotEntry
+import xyz.normalwindow.htmlviewer.data.cloud.SyncSnapshotStore
 import xyz.normalwindow.htmlviewer.data.file.FileRepository
 import xyz.normalwindow.htmlviewer.data.file.TextEncoding
 import xyz.normalwindow.htmlviewer.data.settings.EngineType
@@ -24,7 +28,8 @@ import javax.inject.Inject
 
 /** 编辑器 Snackbar 语义 */
 enum class EditorSnack {
-    SAVED, SAVING_FAILED, LOAD_FAILED, CONVERTED_UTF8, MISSING_FILE, FORMATTED, FORMAT_FAILED
+    SAVED, SAVING_FAILED, LOAD_FAILED, CONVERTED_UTF8, MISSING_FILE, FORMATTED, FORMAT_FAILED,
+    UPLOADED, UPLOAD_FAILED
 }
 
 sealed interface EditorEvent {
@@ -58,7 +63,9 @@ data class EditorUiState(
 class EditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val fileRepository: FileRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val cloudManager: CloudManager,
+    private val syncSnapshotStore: SyncSnapshotStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(EditorUiState())
@@ -142,6 +149,16 @@ class EditorViewModel @Inject constructor(
             result.onSuccess {
                 _state.update { it.copy(dirty = false) }
                 _events.send(EditorEvent.Snackbar(EditorSnack.SAVED))
+                // 云端文件的本地缓存:后台自动上传,不阻塞保存回调(弱网避免卡"保存中")
+                val path = s.path
+                viewModelScope.launch {
+                    when (uploadIfCloud(path)) {
+                        CloudUpload.OK -> _events.send(EditorEvent.Snackbar(EditorSnack.UPLOADED))
+                        CloudUpload.FAILED ->
+                            _events.send(EditorEvent.Snackbar(EditorSnack.UPLOAD_FAILED))
+                        else -> Unit
+                    }
+                }
             }.onFailure {
                 _events.send(EditorEvent.Snackbar(EditorSnack.SAVING_FAILED))
             }
@@ -157,10 +174,49 @@ class EditorViewModel @Inject constructor(
                 .onSuccess {
                     _state.update { it.copy(encoding = TextEncoding.UTF_8, dirty = false) }
                     _events.send(EditorEvent.Snackbar(EditorSnack.CONVERTED_UTF8))
+                    val path = s.path
+                    viewModelScope.launch {
+                        when (uploadIfCloud(path)) {
+                            CloudUpload.OK ->
+                                _events.send(EditorEvent.Snackbar(EditorSnack.UPLOADED))
+                            CloudUpload.FAILED ->
+                                _events.send(EditorEvent.Snackbar(EditorSnack.UPLOAD_FAILED))
+                            else -> Unit
+                        }
+                    }
                 }.onFailure {
                     _events.send(EditorEvent.Snackbar(EditorSnack.SAVING_FAILED))
                 }
         }
+    }
+
+    /** 自动上传结果语义 */
+    private enum class CloudUpload { NOT_CLOUD, SKIPPED, OK, FAILED }
+
+    /**
+     * 云端缓存文件保存后自动上传:
+     * 本地路径在云缓存目录(filesDir/cloud/<provider>/)下 → 上传到对应云端相对路径,
+     * 并更新同步快照条目(避免下次整库同步误判为改动)。非云端文件或关闭自动上传时静默。
+     */
+    private suspend fun uploadIfCloud(localPath: String): CloudUpload {
+        val origin = cloudManager.cacheOriginFor(localPath) ?: return CloudUpload.NOT_CLOUD
+        val (type, rel) = origin
+        if (type == CloudProviderType.NONE || rel.isBlank()) return CloudUpload.NOT_CLOUD
+        val prefs = settingsRepository.preferences.first()
+        if (!prefs.syncAutoUpload) return CloudUpload.SKIPPED
+        val provider = cloudManager.providerFromPrefs(prefs, type) ?: return CloudUpload.FAILED
+        val file = File(localPath)
+        val ok = provider.upload(rel, file).map { remoteMtime ->
+            syncSnapshotStore.updateEntry(
+                type, rel,
+                SnapshotEntry(
+                    localMtime = file.lastModified() / 1000,
+                    remoteMtime = remoteMtime,
+                    size = file.length()
+                )
+            )
+        }.isSuccess
+        return if (ok) CloudUpload.OK else CloudUpload.FAILED
     }
 
     /** 一键整理格式结果:result=="true" 成功,否则为 JS 侧错误信息 */

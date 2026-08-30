@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -21,6 +22,14 @@ import xyz.normalwindow.htmlviewer.data.backup.DataBackup
 import xyz.normalwindow.htmlviewer.data.cache.CacheLocation
 import xyz.normalwindow.htmlviewer.data.cache.CacheStats
 import xyz.normalwindow.htmlviewer.data.cache.ResourceCache
+import xyz.normalwindow.htmlviewer.data.cloud.CloudFile
+import xyz.normalwindow.htmlviewer.data.cloud.CloudManager
+import xyz.normalwindow.htmlviewer.data.cloud.CloudProviderType
+import xyz.normalwindow.htmlviewer.data.cloud.CloudSyncEngine
+import xyz.normalwindow.htmlviewer.data.cloud.SyncSnapshotStore
+import xyz.normalwindow.htmlviewer.data.cloud.SyncConflictPolicy
+import xyz.normalwindow.htmlviewer.data.cloud.exchangeBaiduCode
+import xyz.normalwindow.htmlviewer.data.cloud.WebDavProvider
 import xyz.normalwindow.htmlviewer.data.debug.AppLog
 import xyz.normalwindow.htmlviewer.data.debug.LogExporter
 import xyz.normalwindow.htmlviewer.data.file.FileRootProvider
@@ -33,6 +42,7 @@ import xyz.normalwindow.htmlviewer.data.update.UpdateChecker
 import xyz.normalwindow.htmlviewer.data.update.UpdateInfo
 import xyz.normalwindow.htmlviewer.data.update.isNewerVersion
 import xyz.normalwindow.htmlviewer.render.UserAgentPreset
+import xyz.normalwindow.htmlviewer.ui.cloud.SyncController
 import java.io.File
 import javax.inject.Inject
 
@@ -74,7 +84,31 @@ data class SettingsUiState(
     /** GeckoView 版本号(从 BuildConfig 固定值读取) */
     val geckoVersion: String = "",
     /** 应用版本号(如 1.1.0) */
-    val appVersion: String = ""
+    val appVersion: String = "",
+    /** 当前活动云盘(云盘切换) */
+    val cloudProvider: CloudProviderType = CloudProviderType.NONE,
+    /** 百度是否已登录(存在访问令牌) */
+    val baiduLoggedIn: Boolean = false,
+    /** 百度令牌过期时间(epoch 毫秒,0 = 未登录) */
+    val baiduTokenExpiresAt: Long = 0L,
+    /** 百度开放平台凭据(含 BuildConfig 默认值回填) */
+    val baiduAppKey: String = "",
+    val baiduSecretKey: String = "",
+    /** 百度 OAuth 授权页 URL(WebView 加载) */
+    val baiduAuthorizeUrl: String = "",
+    /** 百度远端根目录(含默认值回填;同步与云端浏览的根) */
+    val baiduRemoteRoot: String = "",
+    /** WebDAV 配置 */
+    val webdavUrl: String = "",
+    val webdavUsername: String = "",
+    val webdavPassword: String = "",
+    val webdavDir: String = "",
+    /** 同步设置 */
+    val syncConflictPolicy: SyncConflictPolicy = SyncConflictPolicy.ASK,
+    val syncAutoUpload: Boolean = true,
+    val syncOnStart: Boolean = false,
+    /** 活动云盘上次完整同步时间(epoch 毫秒,0 = 从未) */
+    val lastSyncAt: Long = 0L
 )
 
 /** 更新检测结果(设置页"检查更新"对话框数据源) */
@@ -91,15 +125,39 @@ sealed interface UpdateUiState {
     data class Failed(val message: String) : UpdateUiState
 }
 
+/** WebDAV 测试连接结果(设置页提示) */
+sealed interface WebDavTestResult {
+    data object Success : WebDavTestResult
+    data class Failed(val message: String) : WebDavTestResult
+}
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val fileRootProvider: FileRootProvider,
-    private val updateChecker: UpdateChecker
+    private val updateChecker: UpdateChecker,
+    private val cloudManager: CloudManager,
+    private val cloudSyncEngine: CloudSyncEngine,
+    private val syncSnapshotStore: SyncSnapshotStore
 ) : ViewModel() {
 
     private val resourceCache = ResourceCache()
+
+    /** 云同步流程(与主页共用控制器:进度状态 + 冲突决定收集器) */
+    val sync = SyncController(
+        context = context,
+        scope = viewModelScope,
+        settingsRepository = settingsRepository,
+        fileRootProvider = fileRootProvider,
+        cloudManager = cloudManager,
+        cloudSyncEngine = cloudSyncEngine,
+        syncSnapshotStore = syncSnapshotStore
+    )
+
+    /** WebDAV 测试连接结果(null = 无进行中的测试) */
+    private val webdavTestFlow = MutableStateFlow<WebDavTestResult?>(null)
+    val webdavTest: StateFlow<WebDavTestResult?> = webdavTestFlow.asStateFlow()
 
     /** 更新检测结果(检查更新对话框数据源) */
     private val updateStateFlow = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
@@ -211,7 +269,22 @@ class SettingsViewModel @Inject constructor(
             geckoVersion = if (BuildConfig.GECKO_ENABLED) GECKO_VERSION else "-",
             appVersion = runCatching {
                 context.packageManager.getPackageInfo(context.packageName, 0).versionName
-            }.getOrNull() ?: ""
+            }.getOrNull() ?: "",
+            cloudProvider = prefs.cloudProvider,
+            baiduLoggedIn = !prefs.baiduAccessToken.isNullOrBlank(),
+            baiduTokenExpiresAt = prefs.baiduTokenExpiresAt,
+            baiduAppKey = prefs.baiduAppKey,
+            baiduSecretKey = prefs.baiduSecretKey,
+            baiduAuthorizeUrl = cloudManager.baiduAuthorizeUrl(prefs),
+            baiduRemoteRoot = prefs.baiduRemoteRoot.ifBlank { CloudManager.DEFAULT_BAIDU_REMOTE_ROOT },
+            webdavUrl = prefs.webdavUrl,
+            webdavUsername = prefs.webdavUsername,
+            webdavPassword = prefs.webdavPassword,
+            webdavDir = prefs.webdavDir,
+            syncConflictPolicy = prefs.syncConflictPolicy,
+            syncAutoUpload = prefs.syncAutoUpload,
+            syncOnStart = prefs.syncOnStart,
+            lastSyncAt = prefs.lastSyncAt
         )
     }.stateIn(
         scope = viewModelScope,
@@ -432,6 +505,122 @@ class SettingsViewModel @Inject constructor(
 
     fun setLanguage(language: AppLanguage) = viewModelScope.launch {
         settingsRepository.setLanguage(language)
+    }
+
+    // ---------- 云同步 ----------
+
+    /** 云盘切换:none/百度/WebDAV;各盘凭据独立保存,切回免重新登录 */
+    fun setCloudProvider(type: CloudProviderType) = viewModelScope.launch {
+        settingsRepository.setCloudProvider(type)
+    }
+
+    /** 用授权码换取令牌并持久化(百度授权 WebView 回调);结果经 baiduAuthFeedback 通知 UI */
+    fun authorizeBaidu(code: String) {
+        viewModelScope.launch {
+            runCatching {
+                val prefs = settingsRepository.preferences.first()
+                val appKey = prefs.baiduAppKey.trim()
+                val secretKey = prefs.baiduSecretKey.trim()
+                exchangeBaiduCode(appKey, secretKey, code)
+            }.fold(
+                onSuccess = { tokens ->
+                    settingsRepository.setBaiduTokens(
+                        tokens.accessToken, tokens.refreshToken, tokens.expiresAt
+                    )
+                    baiduAuthFeedbackFlow.value = true
+                },
+                onFailure = {
+                    AppLog.e("Cloud", "百度授权失败: ${it.message}", it)
+                    baiduAuthFeedbackFlow.value = false
+                }
+            )
+        }
+    }
+
+    /** 百度授权结果(true=成功 false=失败,null=无待处理反馈) */
+    private val baiduAuthFeedbackFlow = MutableStateFlow<Boolean?>(null)
+    val baiduAuthFeedback: StateFlow<Boolean?> = baiduAuthFeedbackFlow.asStateFlow()
+
+    fun consumeBaiduAuthFeedback() {
+        baiduAuthFeedbackFlow.value = null
+    }
+
+    /** 退出百度登录(清除令牌与同步快照) */
+    fun baiduLogout() = viewModelScope.launch {
+        settingsRepository.setBaiduTokens(null, null, 0)
+        syncSnapshotStore.clear(CloudProviderType.BAIDU)
+    }
+
+    /** 保存百度远端根目录(根变更后清空同步快照,避免旧快照误判) */
+    fun saveBaiduRemoteRoot(root: String) = viewModelScope.launch {
+        settingsRepository.setBaiduRemoteRoot(root)
+        syncSnapshotStore.clear(CloudProviderType.BAIDU)
+        settingsRepository.setLastSyncAt(CloudProviderType.BAIDU, 0)
+    }
+
+    /** 云端目录选择器:列出远端目录下的子目录(仅目录;根传空串) */
+    suspend fun listRemoteDirs(dir: String): Result<List<CloudFile>> {
+        val prefs = settingsRepository.preferences.first()
+        val provider = cloudManager.providerFromPrefs(prefs, prefs.cloudProvider)
+            ?: return Result.failure(IllegalStateException("provider 不可用"))
+        return provider.list(dir).map { files -> files.filter { it.isDir } }
+    }
+
+    /** 当前活动云盘类型(目录选择器判断用) */
+    suspend fun activeProviderType(): CloudProviderType =
+        settingsRepository.preferences.first().cloudProvider
+
+    /** 保存百度开放平台凭据 */
+    fun saveBaiduKeys(appKey: String, secretKey: String) = viewModelScope.launch {
+        settingsRepository.setBaiduKeys(appKey, secretKey)
+    }
+
+    /** 保存 WebDAV 配置 */
+    fun saveWebdavConfig(url: String, username: String, password: String, dir: String) =
+        viewModelScope.launch {
+            settingsRepository.setWebdavConfig(url, username, password, dir)
+        }
+
+    /** 测试 WebDAV 连接(用表单当前值,不先落盘) */
+    fun testWebdav(url: String, username: String, password: String, dir: String) {
+        if (url.isBlank() || username.isBlank()) {
+            webdavTestFlow.value = WebDavTestResult.Failed("")
+            return
+        }
+        webdavTestFlow.value = null
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val provider = WebDavProvider(
+                        baseUrl = url,
+                        username = username,
+                        password = password,
+                        remoteRoot = dir.trim().ifBlank { CloudManager.DEFAULT_WEBDAV_DIR }
+                    )
+                    provider.checkAuth()
+                }
+            }
+            webdavTestFlow.value = result.fold(
+                onSuccess = { WebDavTestResult.Success },
+                onFailure = { WebDavTestResult.Failed(it.message ?: "") }
+            )
+        }
+    }
+
+    fun consumeWebdavTest() {
+        webdavTestFlow.value = null
+    }
+
+    fun setSyncConflictPolicy(policy: SyncConflictPolicy) = viewModelScope.launch {
+        settingsRepository.setSyncConflictPolicy(policy)
+    }
+
+    fun setSyncAutoUpload(enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.setSyncAutoUpload(enabled)
+    }
+
+    fun setSyncOnStart(enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.setSyncOnStart(enabled)
     }
 
     private companion object {

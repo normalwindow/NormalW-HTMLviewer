@@ -13,20 +13,30 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import xyz.normalwindow.htmlviewer.data.db.FileMetaEntity
 import xyz.normalwindow.htmlviewer.data.db.FavoriteGroupEntity
+import xyz.normalwindow.htmlviewer.data.cloud.CloudFile
+import xyz.normalwindow.htmlviewer.data.cloud.CloudManager
+import xyz.normalwindow.htmlviewer.data.cloud.CloudProviderType
+import xyz.normalwindow.htmlviewer.data.cloud.CloudSyncEngine
+import xyz.normalwindow.htmlviewer.data.cloud.SyncSnapshotStore
+import xyz.normalwindow.htmlviewer.data.cloud.SyncUiState
 import xyz.normalwindow.htmlviewer.data.debug.AppLog
 import xyz.normalwindow.htmlviewer.data.file.FileItem
 import xyz.normalwindow.htmlviewer.data.file.FileRepository
 import xyz.normalwindow.htmlviewer.data.file.FileRootProvider
 import xyz.normalwindow.htmlviewer.data.file.TrashEntry
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
+import xyz.normalwindow.htmlviewer.data.settings.UserPreferences
 import xyz.normalwindow.htmlviewer.data.template.TemplateRepository
+import xyz.normalwindow.htmlviewer.ui.cloud.SyncController
 import java.io.File
 import javax.inject.Inject
 
@@ -36,12 +46,25 @@ enum class ViewMode { LIST, GRID }
 
 enum class BatchOp { MOVE, COPY }
 
+/** 文件数据源:本地工作区 / 云端网盘(云本地切换) */
+enum class DataSource { LOCAL, CLOUD }
+
+/** 文件排序方式(名称/修改时间/大小/类型) */
+enum class SortMode(val storageValue: String) {
+    NAME("name"), TIME("time"), SIZE("size"), TYPE("type");
+
+    companion object {
+        fun fromStorage(v: String?): SortMode = entries.firstOrNull { it.storageValue == v } ?: NAME
+    }
+}
+
 /** Snackbar 语义事件,文案由 UI 层按语言资源映射 */
 enum class SnackKind {
     CREATED_FILE, CREATED_DIR, DELETED, UNDO_DELETED, RENAMED, MOVED, COPIED,
     FAV_ADDED, FAV_REMOVED, SHARED, ERROR_CREATE, ERROR_RENAME, ERROR_DELETE,
     ERROR_MOVE, ERROR_COPY, ERROR_IO, TRASH_EMPTY, GROUP_CREATED, GROUP_DELETED,
-    IMPORTED, ERROR_IMPORT
+    IMPORTED, ERROR_IMPORT,
+    CLOUD_DOWNLOADED, CLOUD_DELETED, ERROR_CLOUD
 }
 
 sealed interface HomeEvent {
@@ -49,6 +72,9 @@ sealed interface HomeEvent {
     data class OpenBrowser(val path: String, val name: String) : HomeEvent
     data class OpenEditor(val path: String, val name: String) : HomeEvent
     data class Snackbar(val kind: SnackKind, val count: Int = 0) : HomeEvent
+
+    /** 直接展示动态文本的提示(云端错误透传 errno 说明等;空白时 UI 显示通用文案) */
+    data class SnackbarText(val message: String) : HomeEvent
 }
 
 data class HomeUiState(
@@ -62,6 +88,9 @@ data class HomeUiState(
     val refreshing: Boolean = false,
     val selection: Set<String> = emptySet(),
     val viewMode: ViewMode = ViewMode.LIST,
+    /** 文件排序方式与方向(主页菜单可切换,设置持久化) */
+    val sortMode: SortMode = SortMode.NAME,
+    val sortAscending: Boolean = true,
     val showSearch: Boolean = false,
     val recent: List<FileMetaEntity> = emptyList(),
     val favorites: List<FileMetaEntity> = emptyList(),
@@ -72,7 +101,15 @@ data class HomeUiState(
     val batchMode: BatchOp? = null,
     /** 批量操作开始时所在的目录(操作完成后返回刷新) */
     val batchSourceDir: File? = null,
-    val templates: List<xyz.normalwindow.htmlviewer.data.template.TemplateInfo> = emptyList()
+    val templates: List<xyz.normalwindow.htmlviewer.data.template.TemplateInfo> = emptyList(),
+    /** 云本地切换:当前数据源 */
+    val dataSource: DataSource = DataSource.LOCAL,
+    /** 活动云盘类型 */
+    val cloudProvider: CloudProviderType = CloudProviderType.NONE,
+    /** 云端浏览:相对远端根目录的当前目录("" = 根) */
+    val cloudDir: String = "",
+    val cloudItems: List<CloudFile> = emptyList(),
+    val cloudLoading: Boolean = false
 )
 
 @HiltViewModel
@@ -81,7 +118,10 @@ class HomeViewModel @Inject constructor(
     private val fileRepository: FileRepository,
     private val settingsRepository: SettingsRepository,
     private val templateRepository: TemplateRepository,
-    private val rootProvider: FileRootProvider
+    private val rootProvider: FileRootProvider,
+    private val cloudManager: CloudManager,
+    private val cloudSyncEngine: CloudSyncEngine,
+    syncSnapshotStore: SyncSnapshotStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeUiState())
@@ -89,6 +129,17 @@ class HomeViewModel @Inject constructor(
 
     private val _events = Channel<HomeEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    /** 云同步流程(与设置页共用) */
+    val sync = SyncController(
+        context = context,
+        scope = viewModelScope,
+        settingsRepository = settingsRepository,
+        fileRootProvider = rootProvider,
+        cloudManager = cloudManager,
+        cloudSyncEngine = cloudSyncEngine,
+        syncSnapshotStore = syncSnapshotStore
+    )
 
     /** 撤销删除栈:<条目, 入栈时间> */
     private val trashStack = ArrayDeque<Pair<TrashEntry, Long>>()
@@ -122,7 +173,43 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val prefs = settingsRepository.preferences.first()
             _state.update {
-                it.copy(viewMode = if (prefs.gridView) ViewMode.GRID else ViewMode.LIST)
+                it.copy(
+                    viewMode = if (prefs.gridView) ViewMode.GRID else ViewMode.LIST,
+                    sortMode = SortMode.fromStorage(prefs.sortMode),
+                    sortAscending = prefs.sortAscending
+                )
+            }
+        }
+        viewModelScope.launch {
+            // 活动云盘变化(设置页/本页切换)同步到浏览状态
+            settingsRepository.preferences.map { it.cloudProvider }.distinctUntilChanged()
+                .collect { type -> _state.update { it.copy(cloudProvider = type) } }
+        }
+        viewModelScope.launch {
+            // 启动时自动同步(设置开启时):完成后由下方 collect 刷新两侧列表
+            val prefs = settingsRepository.preferences.first()
+            if (prefs.syncOnStart && prefs.cloudProvider != CloudProviderType.NONE) {
+                sync.syncNow()
+            }
+        }
+        viewModelScope.launch {
+            // 百度令牌静默续期:距过期不足 7 天时启动即刷新
+            // (access_token 单次有效期 30 天为平台限制,配合 10 年有效的 refresh_token 可无限续期)
+            val prefs = settingsRepository.preferences.first()
+            if (prefs.cloudProvider == CloudProviderType.BAIDU && !prefs.baiduAccessToken.isNullOrBlank()) {
+                cloudManager.providerFromPrefs(prefs, CloudProviderType.BAIDU)?.let { provider ->
+                    runCatching { provider.checkAuth() }
+                }
+            }
+        }
+        viewModelScope.launch {
+            sync.syncState.collect { st ->
+                if (st is SyncUiState.Done || st is SyncUiState.Failed) {
+                    _state.value.currentDir?.let { loadDir(it) }
+                    if (_state.value.dataSource == DataSource.CLOUD) {
+                        loadCloudDir(_state.value.cloudDir)
+                    }
+                }
             }
         }
     }
@@ -229,13 +316,35 @@ class HomeViewModel @Inject constructor(
 
     fun setSearchVisible(visible: Boolean) = _state.update { it.copy(showSearch = visible) }
 
-    /** 当前过滤后的文件列表 */
+    /** 当前过滤 + 排序后的文件列表(目录恒在前) */
     val filteredItems: List<FileItem>
         get() {
-            val q = _state.value.query.trim().lowercase()
-            return if (q.isEmpty()) _state.value.items
-            else _state.value.items.filter { it.name.lowercase().contains(q) }
+            val s = _state.value
+            val q = s.query.trim().lowercase()
+            val base = if (q.isEmpty()) s.items
+            else s.items.filter { it.name.lowercase().contains(q) }
+            val dirFirst = base.sortedWith(compareByDescending<FileItem> { it.isDirectory })
+            val comparator: Comparator<FileItem> = when (s.sortMode) {
+                SortMode.NAME -> compareBy { it.name.lowercase() }
+                SortMode.TIME -> compareBy { it.lastModified }
+                SortMode.SIZE -> compareBy { it.size }
+                SortMode.TYPE -> compareBy { it.name.substringAfterLast('.', "").lowercase() }
+            }
+            return if (s.sortAscending) dirFirst.sortedWith(comparator)
+            else dirFirst.sortedWith(comparator.reversed())
         }
+
+    /** 切换排序方式(持久化) */
+    fun setSortMode(mode: SortMode) {
+        _state.update { it.copy(sortMode = mode) }
+        viewModelScope.launch { settingsRepository.setSortMode(mode.storageValue) }
+    }
+
+    /** 切换升序/降序(持久化) */
+    fun setSortAscending(ascending: Boolean) {
+        _state.update { it.copy(sortAscending = ascending) }
+        viewModelScope.launch { settingsRepository.setSortAscending(ascending) }
+    }
 
     // ---------- 多选 ----------
 
@@ -464,6 +573,138 @@ class HomeViewModel @Inject constructor(
             _events.send(HomeEvent.Snackbar(SnackKind.FAV_ADDED))
         }
     }
+
+    // ---------- 云端浏览(云本地切换) ----------
+
+    /** 切换本地/云端数据源;首次进入云端时自动加载根目录 */
+    fun setDataSource(ds: DataSource) {
+        _state.update {
+            it.copy(
+                dataSource = ds, selection = emptySet(), batchMode = null,
+                batchSourceDir = null, showSearch = false, query = ""
+            )
+        }
+        if (ds == DataSource.CLOUD) loadCloudDir(_state.value.cloudDir)
+    }
+
+    /** 云盘切换(主页快捷入口;与设置页共用持久化) */
+    fun setCloudProvider(type: CloudProviderType) {
+        viewModelScope.launch {
+            settingsRepository.setCloudProvider(type)
+            _state.update { it.copy(cloudDir = "", cloudItems = emptyList()) }
+            if (_state.value.dataSource == DataSource.CLOUD) loadCloudDir("")
+        }
+    }
+
+    /** 加载云端目录(相对远端根目录;"" = 根目录) */
+    fun loadCloudDir(dir: String) {
+        viewModelScope.launch {
+            val prefs = settingsRepository.preferences.first()
+            val provider = cloudManager.providerFromPrefs(prefs, prefs.cloudProvider)
+            if (provider == null) {
+                _events.send(HomeEvent.Snackbar(SnackKind.ERROR_CLOUD))
+                return@launch
+            }
+            _state.update { it.copy(cloudLoading = true, cloudDir = dir) }
+            provider.list(dir)
+                .onSuccess { items ->
+                    _state.update {
+                        it.copy(
+                            cloudLoading = false,
+                            cloudItems = items.sortedWith(
+                                compareByDescending<CloudFile> { it.isDir }
+                                    .thenBy { it.name.lowercase() }
+                            )
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _state.update { s -> s.copy(cloudLoading = false) }
+                    // 透传具体错误(含 errno 说明),便于定位权限/路径/令牌问题
+                    _events.send(HomeEvent.SnackbarText(e.message ?: ""))
+                }
+        }
+    }
+
+    fun refreshCloud() = loadCloudDir(_state.value.cloudDir)
+
+    /** 返回云端上级目录(根目录时不动作) */
+    fun cloudGoUp() {
+        val dir = _state.value.cloudDir
+        if (dir.isBlank()) return
+        loadCloudDir(dir.substringBeforeLast('/', missingDelimiterValue = ""))
+    }
+
+    /**
+     * 打开云端文件:下载到本地缓存(filesDir/cloud/<provider>/<相对路径>)后按设置
+     * 路由到编辑器/预览;编辑器保存后由云缓存路径前缀自动上传回网盘。
+     */
+    fun openCloudFile(item: CloudFile) {
+        if (item.isDir) {
+            loadCloudDir(item.path)
+            return
+        }
+        viewModelScope.launch {
+            val prefs = settingsRepository.preferences.first()
+            val provider = cloudManager.providerFromPrefs(prefs, prefs.cloudProvider)
+            if (provider == null) {
+                _events.send(HomeEvent.Snackbar(SnackKind.ERROR_CLOUD))
+                return@launch
+            }
+            _state.update { it.copy(cloudLoading = true) }
+            val dest = cloudManager.localPathFor(prefs.cloudProvider, item.path)
+            val ok = provider.download(item.path, dest).isSuccess
+            _state.update { it.copy(cloudLoading = false) }
+            if (!ok) {
+                _events.send(HomeEvent.Snackbar(SnackKind.ERROR_CLOUD))
+                return@launch
+            }
+            _events.send(
+                if (prefs.clickOpensPreview) HomeEvent.OpenBrowser(dest.absolutePath, item.name)
+                else HomeEvent.OpenEditor(dest.absolutePath, item.name)
+            )
+        }
+    }
+
+    /** 云端文件下载到本地工作区(保持相对路径结构,目录自动创建) */
+    fun downloadCloudToLocal(item: CloudFile) {
+        if (item.isDir) return
+        viewModelScope.launch {
+            val prefs = settingsRepository.preferences.first()
+            val provider = cloudManager.providerFromPrefs(prefs, prefs.cloudProvider)
+            if (provider == null) {
+                _events.send(HomeEvent.Snackbar(SnackKind.ERROR_CLOUD))
+                return@launch
+            }
+            val dest = File(rootProvider.defaultRoot, item.path)
+            val ok = provider.download(item.path, dest).isSuccess
+            _events.send(
+                if (ok) HomeEvent.Snackbar(SnackKind.CLOUD_DOWNLOADED)
+                else HomeEvent.Snackbar(SnackKind.ERROR_CLOUD)
+            )
+            if (ok) _state.value.currentDir?.let { loadDir(it) }
+        }
+    }
+
+    /** 删除云端文件/目录(本地缓存副本保留,不传播删除) */
+    fun deleteCloudFile(item: CloudFile) {
+        viewModelScope.launch {
+            val prefs = settingsRepository.preferences.first()
+            val provider = cloudManager.providerFromPrefs(prefs, prefs.cloudProvider)
+            if (provider == null) {
+                _events.send(HomeEvent.Snackbar(SnackKind.ERROR_CLOUD))
+                return@launch
+            }
+            provider.delete(item.path)
+                .onSuccess {
+                    _events.send(HomeEvent.Snackbar(SnackKind.CLOUD_DELETED))
+                    loadCloudDir(_state.value.cloudDir)
+                }
+                .onFailure { _events.send(HomeEvent.Snackbar(SnackKind.ERROR_CLOUD)) }
+        }
+    }
+
+    /** 打开云端缓存的本地文件(供编辑器"在预览中打开"等,不额外处理) */
 
     // ---------- 文件/文件夹导入(SAF) ----------
 

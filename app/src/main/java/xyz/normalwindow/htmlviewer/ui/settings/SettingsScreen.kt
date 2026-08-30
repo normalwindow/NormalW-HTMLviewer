@@ -26,13 +26,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.CallSplit
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -44,7 +52,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -83,10 +93,18 @@ import kotlinx.coroutines.launch
 import xyz.normalwindow.htmlviewer.BuildConfig
 import xyz.normalwindow.htmlviewer.HTMLViewerApp
 import xyz.normalwindow.htmlviewer.R
+import xyz.normalwindow.htmlviewer.data.cloud.CloudProviderType
+import xyz.normalwindow.htmlviewer.data.cloud.SyncConflictPolicy
+import xyz.normalwindow.htmlviewer.data.cloud.SyncUiState
 import xyz.normalwindow.htmlviewer.data.settings.AppLanguage
 import xyz.normalwindow.htmlviewer.data.settings.ColorStyle
 import xyz.normalwindow.htmlviewer.data.settings.EngineType
 import xyz.normalwindow.htmlviewer.data.settings.ThemeMode
+import xyz.normalwindow.htmlviewer.ui.cloud.BaiduAuthDialog
+import xyz.normalwindow.htmlviewer.ui.cloud.ConflictDialog
+import xyz.normalwindow.htmlviewer.ui.cloud.RemoteDirPickerDialog
+import xyz.normalwindow.htmlviewer.ui.cloud.SyncProgressDialog
+import xyz.normalwindow.htmlviewer.ui.cloud.SyncResultDialog
 import xyz.normalwindow.htmlviewer.ui.components.RightAlignedMenu
 import xyz.normalwindow.htmlviewer.ui.components.uaPresetLabel
 import xyz.normalwindow.htmlviewer.render.UserAgentPreset
@@ -103,6 +121,10 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // 后台同步通知权限(Android 13+,隐藏进度对话框时请求)
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
 
     /**
      * 切换界面语言并即时生效:
@@ -150,7 +172,7 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         // ---------- 渲染内核 ----------
-        SectionTitle(stringResource(R.string.settings_section_engine))
+        SectionTitle(stringResource(R.string.settings_section_engine)) {
 
         ListItem(
             headlineContent = { Text(stringResource(R.string.engine_light)) },
@@ -212,8 +234,9 @@ fun SettingsScreen(
         }
         }
 
+        }
         // ---------- 外观 ----------
-        SectionTitle(stringResource(R.string.settings_section_appearance))
+        SectionTitle(stringResource(R.string.settings_section_appearance)) {
 
         // 主题模式:浅色/跟随系统/深色 三选项一行展示
         SingleChoiceSegmentedButtonRow(
@@ -372,8 +395,9 @@ fun SettingsScreen(
             }
         }
 
+        }
         // ---------- 编辑器 ----------
-        SectionTitle(stringResource(R.string.settings_section_editor))
+        SectionTitle(stringResource(R.string.settings_section_editor)) {
 
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_font_size)) },
@@ -418,8 +442,9 @@ fun SettingsScreen(
             }
         )
 
+        }
         // ---------- 浏览器与预览 ----------
-        SectionTitle(stringResource(R.string.settings_section_preview))
+        SectionTitle(stringResource(R.string.settings_section_preview)) {
 
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_click_opens)) },
@@ -493,8 +518,9 @@ fun SettingsScreen(
             }
         )
 
+        }
         // ---------- 资源缓存 ----------
-        SectionTitle(stringResource(R.string.settings_section_cache))
+        SectionTitle(stringResource(R.string.settings_section_cache)) {
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_resource_cache)) },
             supportingContent = { Text(stringResource(R.string.settings_resource_cache_desc)) },
@@ -650,8 +676,9 @@ fun SettingsScreen(
             }
         }
 
+        }
         // ---------- 数据备份 ----------
-        SectionTitle(stringResource(R.string.settings_section_backup))
+        SectionTitle(stringResource(R.string.settings_section_backup)) {
         // 导出完成 → 系统分享
         val exportDataFile by vm.exportDataFile.collectAsStateWithLifecycle()
         LaunchedEffect(exportDataFile) {
@@ -706,8 +733,424 @@ fun SettingsScreen(
             }
         )
 
+        }
+        // ---------- 云同步 ----------
+        SectionTitle(stringResource(R.string.settings_section_cloud)) {
+
+        // 云盘切换(活动数据源:未启用/百度网盘/WebDAV,各盘凭据独立保存)
+        // 未启用时仅显示本行;选择某云盘后仅显示对应云盘的设置与同步设置
+        var cloudMenu by remember { mutableStateOf(false) }
+        var cloudMenuAnchorH by remember { mutableStateOf(0) }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { cloudMenuAnchorH = it.height }
+        ) {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.cloud_provider)) },
+                supportingContent = { Text(stringResource(R.string.cloud_provider_desc)) },
+                leadingContent = { Icon(Icons.Filled.Cloud, contentDescription = null) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickableRow { cloudMenu = true }
+            )
+            RightAlignedMenu(
+                expanded = cloudMenu,
+                onDismissRequest = { cloudMenu = false },
+                anchorHeightPx = cloudMenuAnchorH
+            ) {
+                listOf(
+                    CloudProviderType.NONE to R.string.cloud_none,
+                    CloudProviderType.BAIDU to R.string.cloud_baidu,
+                    CloudProviderType.WEBDAV to R.string.cloud_webdav
+                ).forEach { (type, labelRes) ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(labelRes)) },
+                        onClick = {
+                            cloudMenu = false
+                            vm.setCloudProvider(type)
+                        },
+                        trailingIcon = {
+                            if (state.cloudProvider == type) {
+                                Text("✓", color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        // ================= 百度网盘组(仅选择百度网盘时显示) =================
+        if (state.cloudProvider == CloudProviderType.BAIDU) {
+        GroupLabel(stringResource(R.string.cloud_group_baidu))
+        // 百度网盘账号:授权登录(WebView oob 授权码)与登录状态
+        var showBaiduAuth by remember { mutableStateOf(false) }
+        var showLogoutConfirm by remember { mutableStateOf(false) }
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.baidu_account)) },
+            supportingContent = {
+                Text(
+                    if (state.baiduLoggedIn) {
+                        stringResource(R.string.baidu_logged_in, formatSyncTime(state.baiduTokenExpiresAt))
+                    } else {
+                        stringResource(R.string.baidu_not_logged_in)
+                    }
+                )
+            },
+            leadingContent = { Icon(Icons.Filled.CloudQueue, contentDescription = null) },
+            modifier = Modifier.clickableRow {
+                if (state.baiduLoggedIn) showLogoutConfirm = true else showBaiduAuth = true
+            }
+        )
+        // 登出二次确认(清除令牌与同步快照,不可撤销)
+        if (showLogoutConfirm) {
+            AlertDialog(
+                onDismissRequest = { showLogoutConfirm = false },
+                title = { Text(stringResource(R.string.baidu_logout_title)) },
+                text = { Text(stringResource(R.string.baidu_logout_confirm)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showLogoutConfirm = false
+                        vm.baiduLogout()
+                    }) {
+                        Text(
+                            stringResource(R.string.baidu_logout_action),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutConfirm = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            )
+        }
+        // 百度远端目录(同步与云端浏览的根;可手动输入或从云端选择,避免固定在根目录)
+        var showBaiduRoot by remember { mutableStateOf(false) }
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.baidu_remote_root)) },
+            supportingContent = { Text(state.baiduRemoteRoot) },
+            leadingContent = { Icon(Icons.Filled.CreateNewFolder, contentDescription = null) },
+            modifier = Modifier.clickableRow { showBaiduRoot = true }
+        )
+        // 百度开放平台凭据(AppKey/SecretKey,用户自行申请填写,不内置)
+        var showBaiduKeys by remember { mutableStateOf(false) }
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.baidu_keys)) },
+            supportingContent = { Text(stringResource(R.string.baidu_keys_desc)) },
+            leadingContent = { Icon(Icons.Filled.VpnKey, contentDescription = null) },
+            modifier = Modifier.clickableRow { showBaiduKeys = true }
+        )
+
+        // 百度授权对话框(WebView)+ 授权结果提示
+        if (showBaiduAuth) {
+            BaiduAuthDialog(
+                authorizeUrl = state.baiduAuthorizeUrl,
+                onCode = { vm.authorizeBaidu(it) },
+                onDismiss = { showBaiduAuth = false }
+            )
+        }
+        val baiduAuthFeedback by vm.baiduAuthFeedback.collectAsStateWithLifecycle()
+        LaunchedEffect(baiduAuthFeedback) {
+            baiduAuthFeedback?.let { ok ->
+                showBaiduAuth = false
+                snackbarHostState.showSnackbar(
+                    context.getString(
+                        if (ok) R.string.baidu_auth_success else R.string.baidu_auth_failed
+                    )
+                )
+                vm.consumeBaiduAuthFeedback()
+            }
+        }
+
+        // 百度凭据编辑对话框
+        if (showBaiduKeys) {
+            var keyApp by remember { mutableStateOf(state.baiduAppKey) }
+            var keySecret by remember { mutableStateOf(state.baiduSecretKey) }
+            AlertDialog(
+                onDismissRequest = { showBaiduKeys = false },
+                title = { Text(stringResource(R.string.baidu_keys)) },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = keyApp,
+                            onValueChange = { keyApp = it },
+                            label = { Text(stringResource(R.string.baidu_app_key)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = keySecret,
+                            onValueChange = { keySecret = it },
+                            label = { Text(stringResource(R.string.baidu_secret_key)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            vm.saveBaiduKeys(keyApp, keySecret)
+                            showBaiduKeys = false
+                        }
+                    ) { Text(stringResource(R.string.action_save)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBaiduKeys = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            )
+        }
+
+        // 百度远端目录选择对话框(输入 + 云端浏览双入口)
+        if (showBaiduRoot) {
+            RemoteDirPickerDialog(
+                title = stringResource(R.string.baidu_remote_root),
+                initialPath = state.baiduRemoteRoot,
+                hint = stringResource(R.string.baidu_remote_root_hint),
+                listDirs = { dir -> vm.listRemoteDirs(dir) },
+                onPick = {
+                    vm.saveBaiduRemoteRoot(it)
+                    showBaiduRoot = false
+                },
+                onDismiss = { showBaiduRoot = false }
+            )
+        }
+        }
+
+        // ================= WebDAV 组(仅选择 WebDAV 时显示) =================
+        if (state.cloudProvider == CloudProviderType.WEBDAV) {
+        GroupLabel(stringResource(R.string.cloud_group_webdav))
+        // WebDAV 配置(服务器/账号/密码/远端目录 + 测试连接)
+        var showWebdav by remember { mutableStateOf(false) }
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.webdav_config)) },
+            supportingContent = {
+                Text(
+                    if (state.webdavUrl.isNotBlank()) state.webdavUrl
+                    else stringResource(R.string.webdav_config_desc)
+                )
+            },
+            leadingContent = { Icon(Icons.Filled.Dns, contentDescription = null) },
+            modifier = Modifier.clickableRow { showWebdav = true }
+        )
+
+        // WebDAV 配置对话框(含测试连接)
+        if (showWebdav) {
+            var wUrl by remember { mutableStateOf(state.webdavUrl) }
+            var wUser by remember { mutableStateOf(state.webdavUsername) }
+            var wPass by remember { mutableStateOf(state.webdavPassword) }
+            var wDir by remember { mutableStateOf(state.webdavDir) }
+            AlertDialog(
+                onDismissRequest = { showWebdav = false },
+                title = { Text(stringResource(R.string.webdav_config)) },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = wUrl,
+                            onValueChange = { wUrl = it },
+                            label = { Text(stringResource(R.string.webdav_server)) },
+                            placeholder = { Text(stringResource(R.string.webdav_server_hint)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = wUser,
+                            onValueChange = { wUser = it },
+                            label = { Text(stringResource(R.string.webdav_username)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = wPass,
+                            onValueChange = { wPass = it },
+                            label = { Text(stringResource(R.string.webdav_password)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = wDir,
+                            onValueChange = { wDir = it },
+                            label = { Text(stringResource(R.string.webdav_dir)) },
+                            placeholder = { Text("NW'HTMLviewer") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(
+                            enabled = wUrl.isNotBlank() && wUser.isNotBlank(),
+                            onClick = { vm.testWebdav(wUrl, wUser, wPass, wDir) }
+                        ) { Text(stringResource(R.string.webdav_test)) }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            vm.saveWebdavConfig(wUrl, wUser, wPass, wDir)
+                            showWebdav = false
+                        },
+                        enabled = wUrl.isNotBlank() && wUser.isNotBlank()
+                    ) { Text(stringResource(R.string.action_save)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showWebdav = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            )
+        }
+        // WebDAV 测试结果提示
+        val webdavTest by vm.webdavTest.collectAsStateWithLifecycle()
+        LaunchedEffect(webdavTest) {
+            webdavTest?.let { result ->
+                snackbarHostState.showSnackbar(
+                    when (result) {
+                        is WebDavTestResult.Success ->
+                            context.getString(R.string.webdav_test_ok)
+                        is WebDavTestResult.Failed ->
+                            context.getString(R.string.webdav_test_fail, result.message)
+                    }
+                )
+                vm.consumeWebdavTest()
+            }
+        }
+        }
+
+        // ================= 同步组(启用任意云盘后显示) =================
+        if (state.cloudProvider != CloudProviderType.NONE) {
+        GroupLabel(stringResource(R.string.cloud_group_sync))
+        // 立即同步(主操作,高亮展示;进度/结果/冲突对话框见下方)
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.sync_now)) },
+                supportingContent = {
+                    Text(
+                        if (state.lastSyncAt > 0) {
+                            stringResource(R.string.sync_last_time, formatSyncTime(state.lastSyncAt))
+                        } else {
+                            stringResource(R.string.sync_last_never)
+                        }
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Filled.Sync,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickableRow { vm.sync.syncNow() }
+            )
+        }
+        // 冲突处理策略
+        var policyMenu by remember { mutableStateOf(false) }
+        var policyMenuAnchorH by remember { mutableStateOf(0) }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { policyMenuAnchorH = it.height }
+        ) {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.sync_conflict_policy)) },
+                supportingContent = { Text(stringResource(R.string.sync_conflict_desc)) },
+                leadingContent = { Icon(Icons.Filled.CallSplit, contentDescription = null) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickableRow { policyMenu = true }
+            )
+            RightAlignedMenu(
+                expanded = policyMenu,
+                onDismissRequest = { policyMenu = false },
+                anchorHeightPx = policyMenuAnchorH
+            ) {
+                listOf(
+                    SyncConflictPolicy.ASK to R.string.sync_policy_ask,
+                    SyncConflictPolicy.NEWER_WINS to R.string.sync_policy_newer,
+                    SyncConflictPolicy.KEEP_BOTH to R.string.sync_policy_keep_both
+                ).forEach { (policy, labelRes) ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(labelRes)) },
+                        onClick = {
+                            policyMenu = false
+                            vm.setSyncConflictPolicy(policy)
+                        },
+                        trailingIcon = {
+                            if (state.syncConflictPolicy == policy) {
+                                Text("✓", color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.sync_auto_upload)) },
+            supportingContent = { Text(stringResource(R.string.sync_auto_upload_desc)) },
+            trailingContent = {
+                Switch(checked = state.syncAutoUpload, onCheckedChange = vm::setSyncAutoUpload)
+            }
+        )
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.sync_on_start)) },
+            supportingContent = { Text(stringResource(R.string.sync_on_start_desc)) },
+            trailingContent = {
+                Switch(checked = state.syncOnStart, onCheckedChange = vm::setSyncOnStart)
+            }
+        )
+
+        // 云同步进度/结果/失败对话框
+        val syncState by vm.sync.syncState.collectAsStateWithLifecycle()
+        val syncProgressHidden by vm.sync.progressHidden.collectAsStateWithLifecycle()
+        when (val s = syncState) {
+            is SyncUiState.Running ->
+                if (!syncProgressHidden) {
+                    SyncProgressDialog(progress = s.progress, onDismiss = {
+                        // 隐藏后转通知栏展示:Android 13+ 首次隐藏时请求通知权限
+                        if (!vm.sync.hasNotificationPermission() && android.os.Build.VERSION.SDK_INT >= 33) {
+                            notifPermLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        vm.sync.hideProgress()
+                    })
+                }
+            is SyncUiState.Done -> SyncResultDialog(result = s.result) { vm.sync.consumeState() }
+            is SyncUiState.Failed -> AlertDialog(
+                onDismissRequest = { vm.sync.consumeState() },
+                title = { Text(stringResource(R.string.sync_failed_title)) },
+                text = {
+                    Text(
+                        if (s.message.isBlank()) stringResource(R.string.sync_failed_generic)
+                        else s.message
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { vm.sync.consumeState() }) {
+                        Text(stringResource(R.string.action_confirm))
+                    }
+                }
+            )
+            SyncUiState.Idle -> Unit
+        }
+        // 冲突处理对话框(由 ConflictDecider 的请求驱动,无请求时不渲染)
+        ConflictDialog(decider = vm.sync.conflictDecider, onDismiss = {})
+        }
+
+        }
         // ---------- 开发者 ----------
-        SectionTitle(stringResource(R.string.settings_section_debug))
+        SectionTitle(stringResource(R.string.settings_section_debug)) {
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_debug_mode)) },
             supportingContent = { Text(stringResource(R.string.settings_debug_mode_desc)) },
@@ -742,8 +1185,9 @@ fun SettingsScreen(
             modifier = Modifier.clickableRow { vm.clearLogs() }
         )
 
+        }
         // ---------- 关于 ----------
-        SectionTitle(stringResource(R.string.settings_section_about))
+        SectionTitle(stringResource(R.string.settings_section_about)) {
         ListItem(
             headlineContent = { Text(stringResource(R.string.settings_about_version)) },
             supportingContent = { Text(state.appVersion.ifBlank { "-" }) },
@@ -890,6 +1334,7 @@ fun SettingsScreen(
             }
         )
     }
+        }
     // 应用内提示(清空日志等反馈)
     SnackbarHost(
         hostState = snackbarHostState,
@@ -898,14 +1343,44 @@ fun SettingsScreen(
     }
 }
 
+/** 分区标题 + 圆角卡片容器:各分区内容归入卡片,提升分组观感 */
+/** 分区内部的小组标签(如"百度网盘/WebDAV/同步"):胶囊状,置于组前 */
 @Composable
-private fun SectionTitle(text: String) {
+private fun GroupLabel(text: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+        )
+    }
+}
+
+@Composable
+private fun SectionTitle(
+    text: String,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 6.dp)
     )
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth(), content = content)
+    }
 }
 
 @Composable
@@ -929,6 +1404,11 @@ private fun formatUpdateTime(iso: String): String = runCatching {
         .atZone(java.time.ZoneId.systemDefault())
         .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
 }.getOrDefault(iso)
+
+/** epoch 毫秒 → 本地时间 "yyyy-MM-dd HH:mm"(云同步时间展示) */
+private fun formatSyncTime(ms: Long): String = runCatching {
+    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(ms))
+}.getOrDefault("-")
 
 /** 预设主题色种子(ARGB) */
 private val CUSTOM_COLOR_SEEDS = listOf(

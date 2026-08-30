@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DriveFolderUpload
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GridView
@@ -18,10 +20,15 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +41,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +54,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import xyz.normalwindow.htmlviewer.R
+import xyz.normalwindow.htmlviewer.data.cloud.CloudProviderType
+import xyz.normalwindow.htmlviewer.data.cloud.SyncUiState
+import xyz.normalwindow.htmlviewer.ui.cloud.ConflictDialog
+import xyz.normalwindow.htmlviewer.ui.cloud.SyncProgressDialog
+import xyz.normalwindow.htmlviewer.ui.cloud.SyncResultDialog
 import xyz.normalwindow.htmlviewer.ui.settings.SettingsScreen
 
 /** 主界面:顶部栏 + 四个页签 + Snackbar/导航事件分发 */
@@ -72,6 +85,11 @@ fun HomeScreen(
         if (uri != null) vm.importFolder(uri)
     }
 
+    // 后台同步通知权限(Android 13+)
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
     LaunchedEffect(vm) {
         vm.events.collect { event ->
             when (event) {
@@ -88,9 +106,52 @@ fun HomeScreen(
                     )
                     if (result == SnackbarResult.ActionPerformed) vm.undoDelete()
                 }
+                is HomeEvent.SnackbarText -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message.ifBlank {
+                            context.getString(R.string.snack_cloud_error)
+                        },
+                        duration = SnackbarDuration.Long
+                    )
+                }
             }
         }
     }
+
+    // 云同步进度/结果/失败对话框(云端菜单"立即同步"或启动自动同步触发)
+    val syncState by vm.sync.syncState.collectAsStateWithLifecycle()
+    val progressHidden by vm.sync.progressHidden.collectAsStateWithLifecycle()
+    when (val s = syncState) {
+        is SyncUiState.Running ->
+            if (!progressHidden) {
+                                SyncProgressDialog(progress = s.progress, onDismiss = {
+                    // 隐藏后转通知栏展示:Android 13+ 首次隐藏时请求通知权限
+                    if (!vm.sync.hasNotificationPermission() && android.os.Build.VERSION.SDK_INT >= 33) {
+                        notifPermLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    vm.sync.hideProgress()
+                })
+            }
+        is SyncUiState.Done -> SyncResultDialog(result = s.result) { vm.sync.consumeState() }
+        is SyncUiState.Failed -> AlertDialog(
+            onDismissRequest = { vm.sync.consumeState() },
+            title = { Text(stringResource(R.string.sync_failed_title)) },
+            text = {
+                Text(
+                    if (s.message.isBlank()) stringResource(R.string.sync_failed_generic)
+                    else s.message
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { vm.sync.consumeState() }) {
+                    Text(stringResource(R.string.action_confirm))
+                }
+            }
+        )
+        SyncUiState.Idle -> Unit
+    }
+    // 冲突处理对话框(由 ConflictDecider 的请求驱动,无请求时不渲染)
+    ConflictDialog(decider = vm.sync.conflictDecider, onDismiss = {})
 
     Scaffold(
         topBar = {
@@ -171,6 +232,11 @@ private fun HomeTopBar(
         state.batchMode != null -> state.currentDir?.name ?: batchTitle.orEmpty()
         state.selection.isNotEmpty() ->
             stringResource(R.string.selection_count, state.selection.size)
+        // 云端模式:标题为当前云端目录名(根目录显示"云端")
+        state.tab == HomeTab.FILES && state.dataSource == DataSource.CLOUD ->
+            state.cloudDir.substringAfterLast('/').ifBlank {
+                stringResource(R.string.cloud_toggle_cloud)
+            }
         state.tab == HomeTab.FILES -> state.currentDir?.name ?: stringResource(R.string.app_name)
         state.tab == HomeTab.RECENT -> stringResource(R.string.tab_recent)
         state.tab == HomeTab.FAVORITES -> stringResource(R.string.tab_favorites)
@@ -191,6 +257,15 @@ private fun HomeTopBar(
                 state.selection.isNotEmpty() -> IconButton(onClick = vm::clearSelection) {
                     Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel))
                 }
+                // 云端模式:返回上级云端目录
+                state.tab == HomeTab.FILES &&
+                    state.dataSource == DataSource.CLOUD && state.cloudDir.isNotEmpty() ->
+                    IconButton(onClick = vm::cloudGoUp) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back)
+                        )
+                    }
                 state.tab == HomeTab.FILES && !state.isRoot -> IconButton(onClick = vm::goUp) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -206,31 +281,85 @@ private fun HomeTopBar(
                     Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel))
                 }
             } else if (state.tab == HomeTab.FILES && state.selection.isEmpty()) {
-                if (!state.showSearch) {
+                if (state.dataSource == DataSource.LOCAL && !state.showSearch) {
                     IconButton(onClick = { vm.setSearchVisible(true) }) {
                         Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.action_search))
                     }
+                }
+                // 云本地切换:本地 ⇄ 云端
+                IconButton(
+                    onClick = {
+                        vm.setDataSource(
+                            if (state.dataSource == DataSource.LOCAL) DataSource.CLOUD
+                            else DataSource.LOCAL
+                        )
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (state.dataSource == DataSource.LOCAL) {
+                            Icons.Filled.Cloud
+                        } else {
+                            Icons.Filled.Smartphone
+                        },
+                        contentDescription = stringResource(
+                            if (state.dataSource == DataSource.LOCAL) {
+                                R.string.cloud_toggle_cloud
+                            } else {
+                                R.string.cloud_toggle_local
+                            }
+                        )
+                    )
                 }
                 IconButton(onClick = { showMoreMenu = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                 }
                 DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_import_files)) },
-                        onClick = {
-                            showMoreMenu = false
-                            onImportFiles()
-                        },
-                        leadingIcon = { Icon(Icons.Filled.FileDownload, null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.action_import_folder)) },
-                        onClick = {
-                            showMoreMenu = false
-                            onImportFolder()
-                        },
-                        leadingIcon = { Icon(Icons.Filled.DriveFolderUpload, null) }
-                    )
+                    if (state.dataSource == DataSource.CLOUD) {
+                        // 云端模式菜单:云盘切换 / 立即同步 / 刷新
+                        listOf(
+                            CloudProviderType.BAIDU to R.string.cloud_baidu,
+                            CloudProviderType.WEBDAV to R.string.cloud_webdav
+                        ).forEach { (type, labelRes) ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(labelRes)) },
+                                onClick = {
+                                    showMoreMenu = false
+                                    vm.setCloudProvider(type)
+                                },
+                                leadingIcon = { Icon(Icons.Filled.Cloud, null) },
+                                trailingIcon = {
+                                    if (state.cloudProvider == type) {
+                                        Text("✓", color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.cloud_menu_sync)) },
+                            onClick = {
+                                showMoreMenu = false
+                                vm.sync.syncNow()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Sync, null) }
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_import_files)) },
+                            onClick = {
+                                showMoreMenu = false
+                                onImportFiles()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.FileDownload, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_import_folder)) },
+                            onClick = {
+                                showMoreMenu = false
+                                onImportFolder()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.DriveFolderUpload, null) }
+                        )
+                    }
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -254,11 +383,59 @@ private fun HomeTopBar(
                             )
                         }
                     )
+                    // 排序方式(仅本地文件列表;目录恒在前)
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sort_by)) },
+                        onClick = {},
+                        enabled = false,
+                        leadingIcon = { Icon(Icons.Filled.Sort, null) }
+                    )
+                    listOf(
+                        SortMode.NAME to R.string.sort_by_name,
+                        SortMode.TIME to R.string.sort_by_time,
+                        SortMode.SIZE to R.string.sort_by_size,
+                        SortMode.TYPE to R.string.sort_by_type
+                    ).forEach { (mode, labelRes) ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(labelRes)) },
+                            onClick = {
+                                vm.setSortMode(mode)
+                                showMoreMenu = false
+                            },
+                            trailingIcon = {
+                                if (state.sortMode == mode) {
+                                    Text("✓", color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (state.sortAscending) R.string.sort_ascending
+                                    else R.string.sort_descending
+                                )
+                            )
+                        },
+                        onClick = {
+                            vm.setSortAscending(!state.sortAscending)
+                            showMoreMenu = false
+                        },
+                        leadingIcon = { Icon(Icons.Filled.SwapVert, null) },
+                        trailingIcon = {
+                            Text(
+                                if (state.sortAscending) "↑" else "↓",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_refresh)) },
                         onClick = {
                             showMoreMenu = false
-                            vm.refresh()
+                            if (state.dataSource == DataSource.CLOUD) vm.refreshCloud() else vm.refresh()
                         },
                         leadingIcon = { Icon(Icons.Filled.Refresh, null) }
                     )
@@ -292,6 +469,9 @@ private fun Context.string(kind: SnackKind, count: Int): String {
         SnackKind.GROUP_DELETED -> R.string.snack_group_deleted
         SnackKind.IMPORTED -> R.string.snack_imported
         SnackKind.ERROR_IMPORT -> R.string.snack_error_import
+        SnackKind.CLOUD_DOWNLOADED -> R.string.snack_cloud_downloaded
+        SnackKind.CLOUD_DELETED -> R.string.snack_cloud_deleted
+        SnackKind.ERROR_CLOUD -> R.string.snack_cloud_error
     }
     // 始终传 count:含 %1$d 占位符的资源正常格式化,无占位符的资源会忽略多余参数,
     // 避免 count=0 时走无参分支而把 "已删除 %1$d 项" 之类字面量直接显示出来

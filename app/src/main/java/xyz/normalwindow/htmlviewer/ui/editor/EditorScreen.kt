@@ -178,6 +178,8 @@ fun EditorScreen(
                             EditorSnack.MISSING_FILE -> R.string.snack_missing_file
                             EditorSnack.FORMATTED -> R.string.snack_formatted
                             EditorSnack.FORMAT_FAILED -> R.string.snack_format_failed
+                            EditorSnack.UPLOADED -> R.string.editor_snack_uploaded
+                            EditorSnack.UPLOAD_FAILED -> R.string.editor_snack_upload_failed
                         }
                     )
                     snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Short)

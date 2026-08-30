@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    网络安全配置:允许 cleartext HTTP。
+    原因:1) 局域网 WebDAV(群晖/自建服务)多为 http:// 地址;
+         2) 本地 HTML 预览引用的 http 资源需要原生层放行(WebView 侧已允许混合内容)。
+    仅含 system CA,不影响 HTTPS 证书校验。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
