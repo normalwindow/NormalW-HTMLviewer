@@ -103,7 +103,7 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 
 ## Release(发布版本 v1.2.0)
 
-- 发布产物位于 [GitHub Releases](https://github.com/normalwindow/NormlW-HTMLviewer/releases),按 ABI 拆分(arm64-v8a / armeabi-v7a / x86 / x86_64),**仅需下载 arm64-v8a 包**即可在绝大多数主流设备安装
+- 发布产物位于 [GitHub Releases](https://github.com/normalwindow/NormalW-HTMLviewer/releases),按 ABI 拆分(arm64-v8a / armeabi-v7a / x86 / x86_64),**仅需下载 arm64-v8a 包**即可在绝大多数主流设备安装
 - 提供两种发行版:
   - **Full 版**(`1.2.0`):含 GeckoView 兼容内核,功能完整(约 45 MB/ABI)
   - **Lite 版**(`1.2.0-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式;发布为单一 universal 包(兼容所有 ABI)

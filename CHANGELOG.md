@@ -161,10 +161,10 @@
 - 按 ABI 拆分 Release 包(arm64-v8a / armeabi-v7a / x86 / x86_64),Release 默认使用 debug 签名,正式上架需替换为正式 keystore
 - 两种发行版同步发布:**Full 版**(含 GeckoView 兼容内核,约 185 MB)与 **Lite 版**(仅系统 WebView,约 2.2 MB,体积小约 99%)
 
-[1.0.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.0.0
-[1.1.0]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.0
-[1.1.1]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.1
-[1.1.2]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.2
-[1.1.3]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.3
-[1.1.4]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.4
-[1.1.5]: https://github.com/normalwindow/NormlW-HTMLviewer/releases/tag/v1.1.5
+[1.0.0]: https://github.com/normalwindow/NormalW-HTMLviewer/releases/tag/v1.0.0
+[1.1.0]: https://github.com/normalwindow/NormalW-HTMLviewer/releases/tag/v1.1.0
+[1.1.1]: https://github.com/normalwindow/NormalW-HTMLviewer/releases/tag/v1.1.1
+[1.1.2]: https://github.com/normalwindow/NormalW-HTMLviewer/releases/tag/v1.1.2
+[1.1.3]: https://github.com/normalwindow/NormalW-HTMLviewer/releases/tag/v1.1.3
+[1.1.4]: https://github.com/normalwindow/NormalW-HTMLviewer/releases/tag/v1.1.4
+[1.1.5]: https://github.com/normalwindow/NormalW-HTMLviewer/releases/tag/v1.1.5

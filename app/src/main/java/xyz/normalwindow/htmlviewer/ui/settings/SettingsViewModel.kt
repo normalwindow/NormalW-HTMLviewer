@@ -164,9 +164,9 @@ class SettingsViewModel @Inject constructor(
     val updateState: StateFlow<UpdateUiState> = updateStateFlow.asStateFlow()
 
     /** 更新检测来源:主源 Atom(github.com 域,国内直连较稳定),备源 API(api.github.com) */
-    private val atomUrl = "https://github.com/normalwindow/NormlW-HTMLviewer/releases.atom"
-    private val downloadBaseUrl = "https://github.com/normalwindow/NormlW-HTMLviewer/releases/download/"
-    private val apiUrl = "https://api.github.com/repos/normalwindow/NormlW-HTMLviewer/releases/latest"
+    private val atomUrl = "https://github.com/normalwindow/NormalW-HTMLviewer/releases.atom"
+    private val downloadBaseUrl = "https://github.com/normalwindow/NormalW-HTMLviewer/releases/download/"
+    private val apiUrl = "https://api.github.com/repos/normalwindow/NormalW-HTMLviewer/releases/latest"
 
     /**
      * 手动检查更新:主源 GitHub Releases Atom,失败回退官方 API,与当前版本比较。

@@ -78,7 +78,7 @@ data class UserPreferences(
     val webdavUrl: String = "",
     val webdavUsername: String = "",
     val webdavPassword: String = "",
-    /** WebDAV 远端根目录(空 = 使用默认 /NW'HTMLviewer) */
+    /** WebDAV 远端根目录(空 = 使用默认 /NormalW-HTMLviewer) */
     val webdavDir: String = "",
     /** 双向同步冲突策略(默认每次询问) */
     val syncConflictPolicy: SyncConflictPolicy = SyncConflictPolicy.ASK,

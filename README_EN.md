@@ -100,7 +100,7 @@ Render engines are abstracted behind the `Renderer` interface: preview picks lig
 
 ## Release (v1.2.0)
 
-- Artifacts are published on [GitHub Releases](https://github.com/normalwindow/NormlW-HTMLviewer/releases), split by ABI (arm64-v8a / armeabi-v7a / x86 / x86_64). **Download the arm64-v8a package** for most mainstream devices.
+- Artifacts are published on [GitHub Releases](https://github.com/normalwindow/NormalW-HTMLviewer/releases), split by ABI (arm64-v8a / armeabi-v7a / x86 / x86_64). **Download the arm64-v8a package** for most mainstream devices.
 - Two editions:
   - **Full** (`1.2.0`): includes GeckoView compatibility engine, full features (~45 MB per ABI)
   - **Lite** (`1.2.0-lite`): system WebView only, ~99% smaller (~2.2 MB), no compatibility mode; shipped as a single universal APK (all ABIs)

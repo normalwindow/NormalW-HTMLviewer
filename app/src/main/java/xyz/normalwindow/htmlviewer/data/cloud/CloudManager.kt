@@ -111,6 +111,6 @@ class CloudManager @Inject constructor(
         const val DEFAULT_BAIDU_REMOTE_ROOT = "/apps/HTMLviewer"
 
         /** WebDAV 默认远端目录 */
-        const val DEFAULT_WEBDAV_DIR = "/NW'HTMLviewer"
+        const val DEFAULT_WEBDAV_DIR = "/NormalW-HTMLviewer"
     }
 }

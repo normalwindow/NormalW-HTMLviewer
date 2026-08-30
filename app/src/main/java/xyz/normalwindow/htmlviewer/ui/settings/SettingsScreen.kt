@@ -979,7 +979,7 @@ fun SettingsScreen(
                             value = wDir,
                             onValueChange = { wDir = it },
                             label = { Text(stringResource(R.string.webdav_dir)) },
-                            placeholder = { Text("NW'HTMLviewer") },
+                            placeholder = { Text("NormalW-HTMLviewer") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )

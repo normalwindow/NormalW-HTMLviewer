@@ -112,12 +112,12 @@ fun AboutScreen(onBack: () -> Unit) {
             // GitHub 仓库(点击外部浏览器打开)
             ListItem(
                 headlineContent = { Text(stringResource(R.string.about_github)) },
-                supportingContent = { Text("github.com/normalwindow/NormlW-HTMLviewer") },
+                supportingContent = { Text("github.com/normalwindow/NormalW-HTMLviewer") },
                 leadingContent = { Icon(Icons.Filled.Link, contentDescription = null) },
                 modifier = Modifier.clickable {
                     runCatching {
                         context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/normalwindow/NormlW-HTMLviewer"))
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/normalwindow/NormalW-HTMLviewer"))
                         )
                     }
                 }

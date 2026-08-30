@@ -15,14 +15,14 @@ class WebDavParserTest {
         <?xml version="1.0" encoding="utf-8"?>
         <D:multistatus xmlns:D="DAV:">
           <D:response>
-            <D:href>/dav/NW'HTMLviewer/</D:href>
+            <D:href>/dav/NormalW-HTMLviewer/</D:href>
             <D:propstat><D:prop>
               <D:resourcetype><D:collection/></D:resourcetype>
               <D:getlastmodified>Wed, 21 Oct 2015 07:28:00 GMT</D:getlastmodified>
             </D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>
           </D:response>
           <D:response>
-            <D:href>/dav/NW'HTMLviewer/a%20b.html</D:href>
+            <D:href>/dav/NormalW-HTMLviewer/a%20b.html</D:href>
             <D:propstat><D:prop>
               <D:resourcetype/>
               <D:getcontentlength>123</D:getcontentlength>
@@ -30,7 +30,7 @@ class WebDavParserTest {
             </D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>
           </D:response>
           <D:response>
-            <D:href>/dav/NW'HTMLviewer/sub/</D:href>
+            <D:href>/dav/NormalW-HTMLviewer/sub/</D:href>
             <D:propstat><D:prop>
               <D:resourcetype><D:collection/></D:resourcetype>
             </D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>

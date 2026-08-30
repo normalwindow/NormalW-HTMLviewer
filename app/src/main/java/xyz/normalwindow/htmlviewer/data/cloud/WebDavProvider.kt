@@ -29,7 +29,7 @@ class WebDavProvider(
     baseUrl: String,
     private val username: String,
     private val password: String,
-    /** 远端根目录(相对 baseUrl 的路径,如 /NW'HTMLviewer) */
+    /** 远端根目录(相对 baseUrl 的路径,如 /NormalW-HTMLviewer) */
     private val remoteRoot: String
 ) : CloudProvider {
 
