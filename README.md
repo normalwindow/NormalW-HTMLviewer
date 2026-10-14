@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.0-blue">
+  <img src="https://img.shields.io/badge/version-1.2.1-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -102,13 +102,13 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 
 > NOTE: Release 产物默认使用 debug 签名,便于本地直接构建安装;正式上架请在 `signingConfigs` 中配置正式 keystore 并替换 `build.gradle.kts` 中的引用。
 
-## Release(发布版本 v1.2.0)
+## Release(发布版本 v1.2.1)
 
 - 发布产物位于 [GitHub Releases](https://github.com/normalwindow/NormalW-HTMLviewer/releases),按 ABI 拆分(arm64-v8a / armeabi-v7a / x86 / x86_64),**仅需下载 arm64-v8a 包**即可在绝大多数主流设备安装
 - 提供两种发行版:
-  - **Full 版**(`1.2.0`):含 GeckoView 兼容内核,功能完整(约 45 MB/ABI)
-  - **Lite 版**(`1.2.0-lite`):仅系统 WebView,体积小约 99%(约 2.2 MB),不包含 GeckoView 兼容模式;发布为单一 universal 包(兼容所有 ABI)
-- **v1.2.0 亮点**:接入百度网盘(官方 xpan API + OAuth2)与 WebDAV;主页"本地 ⇄ 云端"切换,云端文件点开即编、保存自动回传;整库双向同步(冲突可弹窗逐个询问,支持新者胜/保留双方);详见 [CHANGELOG.md](CHANGELOG.md)
+  - **Full 版**(`1.2.1`):含 GeckoView 兼容内核,功能完整(包体较大,arm64-v8a 约 185 MB)
+  - **Lite 版**(`1.2.1-lite`):仅系统 WebView,体积小约 99%(约 2.5 MB),不包含 GeckoView 兼容模式;发布为单一 universal 包(兼容所有 ABI)
+- **v1.2.1 亮点**:新增接收外部分享的文本文件(可选原样/HTML/文本,自动识别并转换编码,GBK txt 一键转 UTF-8);修复文件页加号遮挡行内项目菜单;详见 [CHANGELOG.md](CHANGELOG.md)
 - 应用内"设置-关于-检查更新"可自动检测新版本并跳转下载(Atom 源,国内网络可用)
 - 版本变更记录见 [CHANGELOG.md](CHANGELOG.md)
 
