@@ -268,12 +268,24 @@ fun EditorScreen(
             "Editor",
             "initEditor: 内容长度=${s.editorContent.length} 重试=${loadRetryCount.value}"
         )
+        // 文件扩展名 → CodeMirror 语言(供语法高亮;markdown 单独走 md 语言包)
+        val lang = when (s.fileName.substringAfterLast('.', "").lowercase()) {
+            "md", "markdown", "mdown", "mkd" -> "md"
+            "css" -> "css"
+            "js", "mjs", "cjs", "json" -> "js"
+            "jsx" -> "jsx"
+            "ts" -> "ts"
+            "tsx" -> "tsx"
+            "html", "htm" -> "html"
+            else -> "none"
+        }
         val opts = JSONObject()
             .put("fontSize", s.fontSize)
             .put("tabSize", s.tabSize)
             .put("wrap", s.wrap)
             .put("dark", latestDarkTheme)
             .put("scrollbar", s.scrollbar)
+            .put("lang", lang)
         initialized.value = true
         contentLoaded = false
         // 合并为一条 evaluateJavascript:两条异步消息之间 init 与 loadContent
@@ -438,7 +450,8 @@ fun EditorScreen(
                                 showMoreMenu = false
                                 val lang = when (state.fileName.substringAfterLast('.', "").lowercase()) {
                                     "css" -> "css"
-                                    "js", "mjs", "cjs", "ts" -> "js"
+                                    "js", "mjs", "cjs", "ts", "tsx" -> "js"
+                                    "md", "markdown", "mdown", "mkd" -> "md"
                                     else -> "html"
                                 }
                                 editorWebView.value?.evaluateJavascript(

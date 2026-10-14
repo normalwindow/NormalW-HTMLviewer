@@ -1,6 +1,7 @@
 package xyz.normalwindow.htmlviewer.ui.browser
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +15,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import xyz.normalwindow.htmlviewer.data.file.FileRepository
+import xyz.normalwindow.htmlviewer.data.markdown.MarkdownRenderer
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
 import xyz.normalwindow.htmlviewer.render.ConsoleArg
 import xyz.normalwindow.htmlviewer.render.ConsoleLevel
@@ -182,7 +184,22 @@ class BrowserViewModel @Inject constructor(
                     scrollbarSupported = r.pageMetricsSupported
                 )
             }
-            r.loadFile(File(path))
+            // Markdown 文件:渲染为 HTML 后在内存中加载(预览页直接可读);
+            // 其余文件保持原有的文件加载语义(相对路径资源解析不变)。
+            // 读取失败时回退为直接加载文件,由内核按纯文本呈现,行为可预期。
+            val mdFile = File(path)
+            val mdText = if (isMarkdown(mdFile.name)) fileRepository.readText(mdFile).getOrNull() else null
+            if (mdText != null) {
+                r.loadHtml(
+                    MarkdownRenderer.renderDocument(
+                        mdText.content,
+                        title = mdFile.name.substringBeforeLast('.')
+                    ),
+                    baseUrl = Uri.fromFile(mdFile.parentFile ?: mdFile).toString() + "/"
+                )
+            } else {
+                r.loadFile(mdFile)
+            }
             // 触摸板开关跨渲染器保持:重建渲染器后重放开启状态(onPageFinished 会重新注入)
             if (_state.value.touchpadEnabled) {
                 r.setTouchpadMode(true)
@@ -333,5 +350,11 @@ class BrowserViewModel @Inject constructor(
     private companion object {
         /** 控制台日志保留上限 */
         const val CONSOLE_LIMIT = 200
+
+        /** 预览页按 Markdown 渲染的扩展名 */
+        val MARKDOWN_EXTS = setOf("md", "markdown", "mdown", "mkd", "mkdn")
+
+        fun isMarkdown(fileName: String): Boolean =
+            fileName.substringAfterLast('.', "").lowercase() in MARKDOWN_EXTS
     }
 }

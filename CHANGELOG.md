@@ -2,7 +2,26 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式,版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-> 说明:发布版本号(当前 `v1.2.1`)与本地 debug 开发版本号序列相互独立、互不通用。
+> 说明:发布版本号(当前 `v1.3.0`)与本地 debug 开发版本号序列相互独立、互不通用。
+
+## [1.3.0] - 2026-10-14
+
+### 新增
+
+- **Markdown 格式支持**:`.md` / `.markdown` / `.mdown` / `.mkd` 文件在预览页直接渲染为排版好的网页(标题/列表/任务列表/嵌套列表/表格/围栏代码块/引用块/水平线/链接/图片/粗体斜体删除线/自动链接),内置移动端阅读样式并跟随系统深浅色
+  - 渲染为**离线自实现**,不引入第三方 Markdown 运行时,不增加包体依赖
+  - 编辑器内 `.md` 具备**语法高亮**(CodeMirror lang-markdown),并支持一键整理格式(prettier markdown)
+  - 文件列表新增 `MD` 类型徽标与配色
+  - **安全**:渲染前统一 HTML 转义,`.md` 中的 `<script>` / `onerror` 等原样显示为文本;`javascript:` `data:` `vbscript:` 等危险协议链接被拒绝,不会生成可点击链接
+
+### 修复
+
+- 斜体在中文语境下不渲染:`*斜体*` 遇到后接汉字时星号原样显示。根因是 Android 的 `java.util.regex` 基于 ICU,`\w` 为 Unicode 感知会把汉字视为单词字符,导致后向断言失败(桌面 JVM 的 `\w` 仅 ASCII,单元测试无法暴露)。改用显式 ASCII 字符类,并新增以 `UNICODE_CHARACTER_CLASS` 模拟 Android 语义的守护测试
+- 链接/图片 URL 含配对圆括号时被截断(如维基百科 `/wiki/Foo_(bar)`),并残留多余右括号到正文
+
+### 变更
+
+- 版本号 1.2.1 → 1.3.0(versionCode 9 → 10)
 
 ## [1.2.1] - 2026-10-14
 

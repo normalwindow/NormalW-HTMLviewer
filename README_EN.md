@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.1-blue">
+  <img src="https://img.shields.io/badge/version-1.3.0-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -32,6 +32,7 @@ An industrial-grade mobile **HTML editor with fullscreen preview** app (native M
   - Compatibility mode: built-in GeckoView 153 (independent engine, fixed rendering behavior, persistent disk cache)
 - **Offline resource cache**: network resources (CDN, etc.) are saved to a hidden `.htmlviewer_cache` folder next to the HTML file after first download; reused offline when the URL is unchanged. Toggleable, manually cleanable
 - **File management**: directory browsing, list/grid views, live search, recent files, favorites, multi-select batch operations (delete/move/copy/share), undoable delete (5s recycle bin), built-in templates
+- **Markdown support**: `.md` files render as formatted pages in the preview (headings, lists, task lists, nested lists, tables, code blocks, quotes, links, images, bold/italic/strikethrough); syntax highlighting and one-tap formatting in the editor, with a dark-mode-aware reading style
 - **File/folder import**: import external files or whole folders into the current directory via the system document picker (SAF) — no storage permission needed, auto de-duplication
 - **Encoding support**: auto-detects UTF-8/GBK/UTF-16 (BOM first), opens legacy GBK HTML files, one-click save as UTF-8
 - **User-friendly settings**: theme (system/light/dark + dynamic color), 8 Material3 color schemes (TonalSpot/Neutral/Vibrant/Expressive/Rainbow/FruitSalad/Monochrome/Fidelity), custom theme color, editor font size/indent/auto-save/word wrap, immersive mode
@@ -98,13 +99,13 @@ Render engines are abstracted behind the `Renderer` interface: preview picks lig
 
 > Release builds use the debug signing key by default for local installs; configure a real keystore in `signingConfigs` before publishing.
 
-## Release (v1.2.1)
+## Release (v1.3.0)
 
 - Artifacts are published on [GitHub Releases](https://github.com/normalwindow/NormalW-HTMLviewer/releases), split by ABI (arm64-v8a / armeabi-v7a / x86 / x86_64). **Download the arm64-v8a package** for most mainstream devices.
 - Two editions:
-  - **Full** (`1.2.1`): includes GeckoView compatibility engine, full features (large package, ~185 MB for arm64-v8a)
-  - **Lite** (`1.2.1-lite`): system WebView only, ~99% smaller (~2.5 MB), no compatibility mode; shipped as a single universal APK (all ABIs)
-- **v1.2.1 highlights**: receive text files shared from other apps (save as original / HTML page / text, with automatic encoding detection and conversion — fix GBK mojibake to UTF-8 in one tap); fixed the FAB covering the per-row action menu on the Files page; see [CHANGELOG.md](CHANGELOG.md)
+  - **Full** (`1.3.0`): includes GeckoView compatibility engine, full features (large package, ~185 MB for arm64-v8a)
+  - **Lite** (`1.3.0-lite`): system WebView only, ~99% smaller (~2.5 MB), no compatibility mode; shipped as a single universal APK (all ABIs)
+- **v1.3.0 highlights**: Markdown support — `.md` files render as formatted pages in the preview (headings, lists, task lists, tables, code blocks, quotes, links, images, emphasis), with syntax highlighting and one-tap formatting in the editor, plus a dark-mode-aware reading style; fixed italic not rendering next to CJK text; see [CHANGELOG.md](CHANGELOG.md)
 - Built-in "Check for Updates" in Settings → About detects new releases and opens the download link (Atom feed source, works on domestic networks).
 - See [CHANGELOG.md](CHANGELOG.md) for version history.
 

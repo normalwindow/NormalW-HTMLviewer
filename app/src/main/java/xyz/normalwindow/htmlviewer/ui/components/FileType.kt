@@ -10,6 +10,7 @@ enum class FileType(
     val badge: String
 ) {
     HTML(Color(0xFFE64A19), Color(0x26E64A19), "HTML"),
+    MD(Color(0xFF3949AB), Color(0x263949AB), "MD"),
     CSS(Color(0xFF1E88E5), Color(0x261E88E5), "CSS"),
     JS(Color(0xFFF9A825), Color(0x26F9A825), "JS"),
     TS(Color(0xFF00897B), Color(0x2600897B), "TS"),
@@ -18,6 +19,7 @@ enum class FileType(
 
 fun fileTypeOf(name: String): FileType = when (name.substringAfterLast('.', "").lowercase()) {
     "html", "htm" -> FileType.HTML
+    "md", "markdown", "mdown", "mkd", "mkdn" -> FileType.MD
     "css" -> FileType.CSS
     "js", "mjs", "cjs" -> FileType.JS
     "ts", "tsx" -> FileType.TS

@@ -1,4 +1,4 @@
-# NW-HTMLviewer
+﻿# NW-HTMLviewer
 
 **中文** | [English](README_EN.md)
 
@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.1-blue">
+  <img src="https://img.shields.io/badge/version-1.3.0-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -32,6 +32,7 @@
   - 兼容模式:内置 GeckoView 153(独立内核,渲染行为固定,持久磁盘缓存)
 - **离线资源缓存**:网络资源(CDN 等)首次下载后固化到 HTML 同目录隐藏文件夹 `.htmlviewer_cache`,URL 不变时离线直接使用,可开关、可手动清理刷新
 - **文件管理**:目录浏览、列表/网格视图、实时搜索、最近打开、收藏、多选批量操作(删除/移动/复制/分享)、删除可撤销(5 秒回收站)、内置模板新建
+- **Markdown 支持**:`.md` 文件在预览页直接渲染为排版好的网页(标题/列表/任务列表/嵌套列表/表格/代码块/引用/链接/图片/粗体斜体删除线),编辑器内具备语法高亮与一键整理格式,并支持跟随系统的深浅色阅读样式
 - **文件/文件夹导入**:通过系统文档选择器(SAF)把外部文件或整个文件夹导入到当前目录,无需存储权限,同名自动去重
 - **外部分享接收**:在其它应用(文件管理器/浏览器/笔记)中分享文本文件到本应用,弹窗内可选择保存为**原样 / HTML 页面 / 文本**,并确认文件名与保存位置;弹窗会显示自动探测到的编码(UTF-8/GBK/UTF-16)与内容预览,把 GBK 存量 txt 一键转成 UTF-8 消除乱码;仅注册 text/* 与 json,不会出现在图片/视频的分享列表中
 - **编码兼容**:自动检测 UTF-8/GBK/UTF-16(BOM 优先),支持 GBK 存量 HTML 文件,可一键转存 UTF-8
@@ -102,13 +103,13 @@ app/src/main/java/xyz/normalwindow/htmlviewer/
 
 > NOTE: Release 产物默认使用 debug 签名,便于本地直接构建安装;正式上架请在 `signingConfigs` 中配置正式 keystore 并替换 `build.gradle.kts` 中的引用。
 
-## Release(发布版本 v1.2.1)
+## Release(发布版本 v1.3.0)
 
 - 发布产物位于 [GitHub Releases](https://github.com/normalwindow/NormalW-HTMLviewer/releases),按 ABI 拆分(arm64-v8a / armeabi-v7a / x86 / x86_64),**仅需下载 arm64-v8a 包**即可在绝大多数主流设备安装
 - 提供两种发行版:
-  - **Full 版**(`1.2.1`):含 GeckoView 兼容内核,功能完整(包体较大,arm64-v8a 约 185 MB)
-  - **Lite 版**(`1.2.1-lite`):仅系统 WebView,体积小约 99%(约 2.5 MB),不包含 GeckoView 兼容模式;发布为单一 universal 包(兼容所有 ABI)
-- **v1.2.1 亮点**:新增接收外部分享的文本文件(可选原样/HTML/文本,自动识别并转换编码,GBK txt 一键转 UTF-8);修复文件页加号遮挡行内项目菜单;详见 [CHANGELOG.md](CHANGELOG.md)
+  - **Full 版**(`1.3.0`):含 GeckoView 兼容内核,功能完整(包体较大,arm64-v8a 约 185 MB)
+  - **Lite 版**(`1.3.0-lite`):仅系统 WebView,体积小约 99%(约 2.5 MB),不包含 GeckoView 兼容模式;发布为单一 universal 包(兼容所有 ABI)
+- **v1.3.0 亮点**:新增 Markdown 格式支持(预览渲染 + 编辑器语法高亮 + 一键整理);修复中文斜体不渲染;详见 [CHANGELOG.md](CHANGELOG.md)
 - 应用内"设置-关于-检查更新"可自动检测新版本并跳转下载(Atom 源,国内网络可用)
 - 版本变更记录见 [CHANGELOG.md](CHANGELOG.md)
 

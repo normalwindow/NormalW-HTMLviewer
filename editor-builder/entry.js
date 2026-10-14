@@ -4,6 +4,7 @@ import { EditorView, basicSetup } from "codemirror";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { javascript } from "@codemirror/lang-javascript";
+import { markdown } from "@codemirror/lang-markdown";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorState, Compartment } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
@@ -27,6 +28,33 @@ const wrapComp = new Compartment();
 const tabSizeComp = new Compartment();
 /** 语法高亮可降级(大文件禁用,显著降低 DOM/解析压力) */
 const langComp = new Compartment();
+
+/**
+ * 扩展名 → CodeMirror 语言扩展。
+ * markdown 单独走 lang-markdown(带 GFM 表格/任务列表支持);
+ * 未知类型返回空数组(纯文本,不做高亮)。
+ */
+function langExtension(lang) {
+  switch (lang) {
+    case "md":
+    case "markdown":
+      return markdown();
+    case "css":
+      return css();
+    case "js":
+    case "jsx":
+      return javascript();
+    case "ts":
+      return javascript({ typescript: true });
+    case "tsx":
+      return javascript({ typescript: true, jsx: true });
+    case "html":
+      return html();
+    // none / 未识别:不带语言(纯文本)
+    default:
+      return [];
+  }
+}
 
 // 内容拉取分块(字符数):远小于 Android JavascriptInterface 的 Binder 传输上限
 // (32KB 单事务,几乎不可能触发 Binder 压力下的偶发失败)
@@ -62,7 +90,7 @@ function createState(opts) {
     doc: opts.content || "",
     extensions: [
       basicSetup,
-      langComp.of(opts.highlight === false ? [] : [html(), css(), javascript()]),
+      langComp.of(opts.highlight === false ? [] : langExtension(opts.lang)),
       themeComp.of(opts.dark ? oneDark : []),
       fontSizeComp.of(fontSizeTheme(opts.fontSize || 14)),
       wrapComp.of(opts.wrap ? EditorView.lineWrapping : []),
@@ -490,6 +518,7 @@ const FORMAT_VENDOR = [
   "vendor/prettier-plugins-postcss.js",
   "vendor/prettier-plugins-babel.js",
   "vendor/prettier-plugins-estree.js",
+  "vendor/prettier-plugins-markdown.js",
 ];
 function loadFormatVendor(cb) {
   if (window.prettier) {
@@ -726,7 +755,7 @@ window.HVEditor = {
   },
 
   /**
-   * 一键整理格式(lang: "html" | "css" | "js")。
+   * 一键整理格式(lang: "html" | "css" | "js" | "md")。
    * 返回 Promise:成功 resolve true,失败 resolve 错误信息字符串。
    */
   format(lang) {
@@ -742,11 +771,15 @@ window.HVEditor = {
               resolve("格式化组件加载失败");
               return;
             }
-            const parser = lang === "css" ? "css" : lang === "js" ? "babel" : "html";
+            const parser = lang === "css" ? "css"
+              : lang === "js" ? "babel"
+              : lang === "md" ? "markdown"
+              : "html";
             const plugins = [];
             if (window.prettierPlugins) {
               if (parser === "html") plugins.push(window.prettierPlugins.html);
               else if (parser === "css") plugins.push(window.prettierPlugins.postcss);
+              else if (parser === "markdown") plugins.push(window.prettierPlugins.markdown);
               else plugins.push(window.prettierPlugins.babel, window.prettierPlugins.estree);
             }
             const code = view.state.doc.toString();

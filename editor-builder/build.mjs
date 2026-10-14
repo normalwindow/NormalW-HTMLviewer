@@ -25,6 +25,7 @@ const vendor = [
   ["node_modules/prettier/plugins/postcss.js", "vendor/prettier-plugins-postcss.js"],
   ["node_modules/prettier/plugins/babel.js", "vendor/prettier-plugins-babel.js"],
   ["node_modules/prettier/plugins/estree.js", "vendor/prettier-plugins-estree.js"],
+  ["node_modules/prettier/plugins/markdown.js", "vendor/prettier-plugins-markdown.js"],
 ];
 for (const [src, dest] of vendor) {
   cpSync(src, outDir + "/" + dest);
