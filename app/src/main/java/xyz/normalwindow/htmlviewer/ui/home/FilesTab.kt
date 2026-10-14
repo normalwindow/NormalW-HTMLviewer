@@ -88,6 +88,15 @@ import xyz.normalwindow.htmlviewer.ui.components.fileTypeOf
 import java.io.File
 import java.util.Locale
 
+/**
+ * 列表底部为"新建"加号预留的滚动余量(FAB 直径 56dp + 上下各 16dp 边距 = 88dp)。
+ *
+ * 加号保持 Material 标准的浮层写法不动,只给可滚动内容补这一段底部内边距:
+ * 视口高度全额还给列表(短列表完全没有多余空白),滚到最底时最后一行
+ * (含行内 "⋮" 项目菜单)刚好停在加号上方,点击不再被加号抢走。
+ */
+private val FabBottomClearance = 88.dp
+
 /** 文件浏览页:目录导航 + 多选批量操作 + 搜索 + 列表/网格切换 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,6 +107,11 @@ fun FilesTab(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val items = vm.filteredItems
+
+    // 加号是否可见(多选/批量/云端模式时隐藏,避免遮挡底部操作栏)。
+    // 同时作为列表/网格底部余量的开关:加号不在时不必留白。
+    val showFab = state.batchMode == null && state.selection.isEmpty() &&
+        state.dataSource == DataSource.LOCAL
 
     var showCreateSheet by remember { mutableStateOf(false) }
     var showNewFileDialog by remember { mutableStateOf(false) }
@@ -171,6 +185,7 @@ fun FilesTab(
                 state.viewMode == ViewMode.GRID -> FileGrid(
                     items = items,
                     selection = state.selection,
+                    reserveFabSpace = showFab,
                     onItemClick = { item ->
                         when {
                             state.batchMode != null && item.isDirectory -> vm.enterDirInBatch(item)
@@ -191,7 +206,13 @@ fun FilesTab(
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            top = 8.dp,
+                            end = 16.dp,
+                            // 加号可见时补底部余量,保证滚到底后最后一行停在加号上方
+                            bottom = if (showFab) FabBottomClearance else 8.dp
+                        ),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         items(items, key = { it.path }) { item ->
@@ -286,9 +307,7 @@ fun FilesTab(
         }
 
         // 新建 FAB(多选/批量/云端模式时隐藏,避免遮挡底部操作栏)
-        if (state.batchMode == null && state.selection.isEmpty() &&
-            state.dataSource == DataSource.LOCAL
-        ) {
+        if (showFab) {
             FloatingActionButton(
                 onClick = { showCreateSheet = true },
                 modifier = Modifier
@@ -582,13 +601,20 @@ private fun ActionButton(
 private fun FileGrid(
     items: List<FileItem>,
     selection: Set<String>,
+    /** 加号可见时在网格底部补余量,避免最后一行卡片被加号压住 */
+    reserveFabSpace: Boolean,
     onItemClick: (FileItem) -> Unit,
     onItemLongClick: (FileItem) -> Unit,
     onFavoriteClick: (String) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 110.dp),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            bottom = if (reserveFabSpace) FabBottomClearance else 16.dp
+        ),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize()
