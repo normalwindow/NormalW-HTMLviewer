@@ -1,4 +1,4 @@
-# NW-HTMLviewer
+﻿# NW-HTMLviewer
 
 [中文](README.md) | **English**
 
@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.3.0-blue">
+  <img src="https://img.shields.io/badge/version-1.2.2-blue">
   <img src="https://img.shields.io/badge/platform-Android-lightgrey">
   <img src="https://img.shields.io/badge/minSdk-26-brightgreen">
   <img src="https://img.shields.io/badge/license-Apache--2.0-blue">
@@ -99,13 +99,13 @@ Render engines are abstracted behind the `Renderer` interface: preview picks lig
 
 > Release builds use the debug signing key by default for local installs; configure a real keystore in `signingConfigs` before publishing.
 
-## Release (v1.3.0)
+## Release (v1.2.2)
 
 - Artifacts are published on [GitHub Releases](https://github.com/normalwindow/NormalW-HTMLviewer/releases), split by ABI (arm64-v8a / armeabi-v7a / x86 / x86_64). **Download the arm64-v8a package** for most mainstream devices.
 - Two editions:
-  - **Full** (`1.3.0`): includes GeckoView compatibility engine, full features (large package, ~185 MB for arm64-v8a)
-  - **Lite** (`1.3.0-lite`): system WebView only, ~99% smaller (~2.5 MB), no compatibility mode; shipped as a single universal APK (all ABIs)
-- **v1.3.0 highlights**: Markdown support — `.md` files render as formatted pages in the preview (headings, lists, task lists, tables, code blocks, quotes, links, images, emphasis), with syntax highlighting and one-tap formatting in the editor, plus a dark-mode-aware reading style; fixed italic not rendering next to CJK text; see [CHANGELOG.md](CHANGELOG.md)
+  - **Full** (`1.2.2`): includes GeckoView compatibility engine, full features (large package, ~185 MB for arm64-v8a)
+  - **Lite** (`1.2.2-lite`): system WebView only, ~99% smaller (~2.5 MB), no compatibility mode; shipped as a single universal APK (all ABIs)
+- **v1.2.2 highlights**: Markdown support — `.md` files render as formatted pages in the preview (headings, lists, task lists, tables, code blocks, quotes, links, images, emphasis), with syntax highlighting and one-tap formatting in the editor, plus a dark-mode-aware reading style; fixed italic not rendering next to CJK text; see [CHANGELOG.md](CHANGELOG.md)
 - Built-in "Check for Updates" in Settings → About detects new releases and opens the download link (Atom feed source, works on domestic networks).
 - See [CHANGELOG.md](CHANGELOG.md) for version history.
 
