@@ -2,6 +2,8 @@ package xyz.normalwindow.htmlviewer
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +22,7 @@ import xyz.normalwindow.htmlviewer.data.settings.AppLanguage
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
 import xyz.normalwindow.htmlviewer.data.settings.ThemeMode
 import xyz.normalwindow.htmlviewer.data.settings.UserPreferences
+import xyz.normalwindow.htmlviewer.data.share.IncomingShareStore
 import xyz.normalwindow.htmlviewer.ui.navigation.AppNavHost
 import xyz.normalwindow.htmlviewer.ui.theme.HTMLViewerTheme
 import xyz.normalwindow.htmlviewer.util.LocaleManager
@@ -30,6 +33,10 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    /** 分享接收中转站:onCreate / onNewIntent 写入,界面层消费 */
+    @Inject
+    lateinit var incomingShareStore: IncomingShareStore
 
     /** 应用内语言切换:把所选语言套到资源 Configuration 上(跟随系统时原样返回)。
      * 注意:attachBaseContext 阶段 Activity.application 尚未赋值(为 null),
@@ -47,6 +54,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // 冷启动即由分享进入时先接收,再交给界面层处理
+        handleShareIntent(intent)
         setContent {
             val prefs by settingsRepository.preferences
                 .collectAsStateWithLifecycle(initialValue = UserPreferences())
@@ -72,5 +81,55 @@ class MainActivity : ComponentActivity() {
                 AppNavHost()
             }
         }
+    }
+
+    /** singleTask 下再次分享会走这里,而不是新建 Activity 实例 */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShareIntent(intent)
+    }
+
+    /**
+     * 解析 ACTION_SEND / ACTION_SEND_MULTIPLE 的分享内容并投入中转站。
+     *
+     * 用 EXTRA_STREAM 优先、ClipData 兜底:部分应用(如某些文件管理器)只填 ClipData,
+     * 只读 EXTRA_STREAM 会拿到空 uri。仅处理本应用已声明接收的文本类型。
+     */
+    private fun handleShareIntent(intent: Intent?) {
+        val action = intent?.action ?: return
+        if (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) return
+
+        val uris = mutableListOf<Uri>()
+        val mimes = mutableListOf<String?>()
+
+        if (action == Intent.ACTION_SEND_MULTIPLE) {
+            intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                ?.let { uris.addAll(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let { uris.add(it) }
+        }
+
+        // EXTRA_STREAM 缺失时回退到 ClipData
+        if (uris.isEmpty()) {
+            val clip = intent.clipData
+            if (clip != null) {
+                for (i in 0 until clip.itemCount) {
+                    clip.getItemAt(i).uri?.let { uris.add(it) }
+                }
+            }
+        }
+        if (uris.isEmpty()) return
+
+        val type = intent.type
+        uris.forEach { mimes.add(type) }
+
+        // 确保读取授权覆盖本次分享的 uri(部分三方应用不主动授予)
+        runCatching {
+            uris.forEach { grantUriPermission(packageName, it, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        }
+
+        incomingShareStore.submit(uris, mimes)
     }
 }

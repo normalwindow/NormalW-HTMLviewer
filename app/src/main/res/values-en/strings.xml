@@ -78,6 +78,30 @@
     <string name="snack_trash_empty">Nothing to undo</string>
     <string name="snack_imported">Imported %1$d file(s)</string>
     <string name="snack_error_import">Import failed, please retry</string>
+
+    <!-- Shared into the app from another app -->
+    <string name="share_import_title">Save shared file</string>
+    <string name="share_import_subtitle">%1$d file(s)</string>
+    <string name="share_section_format">Save as</string>
+    <string name="share_format_original">Keep original</string>
+    <string name="share_format_original_desc">Byte-exact copy, original extension kept</string>
+    <string name="share_format_html">Convert to HTML page</string>
+    <string name="share_format_html_desc">Wrap into a document, keeping line breaks and spaces</string>
+    <string name="share_format_text">Convert to text</string>
+    <string name="share_format_text_desc">Re-encode to the selected charset, fixes mojibake</string>
+    <string name="share_section_encoding">Text encoding</string>
+    <string name="share_section_location">Save to</string>
+    <string name="share_section_name">File name</string>
+    <string name="share_location_root">Workspace root</string>
+    <string name="share_location_current">Last browsed folder</string>
+    <string name="share_pick_folder">Choose folder…</string>
+    <string name="share_detected_encoding">Detected encoding: %1$s</string>
+    <string name="share_binary_notice">Not a text file, only "Keep original" is available</string>
+    <string name="share_no_target_dir">No destination selected</string>
+    <string name="share_save_failed">Save failed, please retry</string>
+    <string name="share_saved">Saved to %1$s</string>
+    <string name="share_stage_failed">Unable to read the shared content</string>
+    <string name="share_preview">Preview</string>
     <string name="snack_error_create">Create failed</string>
     <string name="snack_error_rename">Rename failed</string>
     <string name="snack_error_delete">Delete failed</string>

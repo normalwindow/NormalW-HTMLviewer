@@ -78,6 +78,30 @@
     <string name="snack_trash_empty">没有可撤销的删除</string>
     <string name="snack_imported">已导入 %1$d 个文件</string>
     <string name="snack_error_import">导入失败,请重试</string>
+
+    <!-- 外部应用分享进来 -->
+    <string name="share_import_title">保存分享的文件</string>
+    <string name="share_import_subtitle">共 %1$d 个文件</string>
+    <string name="share_section_format">保存格式</string>
+    <string name="share_format_original">原样保存</string>
+    <string name="share_format_original_desc">字节级保留原内容与扩展名</string>
+    <string name="share_format_html">转为 HTML 页面</string>
+    <string name="share_format_html_desc">包成网页文档,保留换行与空格</string>
+    <string name="share_format_text">转为文本</string>
+    <string name="share_format_text_desc">统一编码为所选格式,修正乱码</string>
+    <string name="share_section_encoding">文本编码</string>
+    <string name="share_section_location">保存位置</string>
+    <string name="share_section_name">文件名</string>
+    <string name="share_location_root">工作区根目录</string>
+    <string name="share_location_current">当前浏览目录</string>
+    <string name="share_pick_folder">选择文件夹…</string>
+    <string name="share_detected_encoding">检测到编码:%1$s</string>
+    <string name="share_binary_notice">非文本文件,仅支持原样保存</string>
+    <string name="share_no_target_dir">未选择保存位置</string>
+    <string name="share_save_failed">保存失败,请重试</string>
+    <string name="share_saved">已保存到 %1$s</string>
+    <string name="share_stage_failed">无法读取分享的内容</string>
+    <string name="share_preview">内容预览</string>
     <string name="snack_error_create">创建失败</string>
     <string name="snack_error_rename">重命名失败</string>
     <string name="snack_error_delete">删除失败</string>

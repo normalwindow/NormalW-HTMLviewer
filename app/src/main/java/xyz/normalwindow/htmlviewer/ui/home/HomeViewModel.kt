@@ -35,6 +35,7 @@ import xyz.normalwindow.htmlviewer.data.file.FileRootProvider
 import xyz.normalwindow.htmlviewer.data.file.TrashEntry
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
 import xyz.normalwindow.htmlviewer.data.settings.UserPreferences
+import xyz.normalwindow.htmlviewer.data.share.IncomingShareStore
 import xyz.normalwindow.htmlviewer.data.template.TemplateRepository
 import xyz.normalwindow.htmlviewer.ui.cloud.SyncController
 import java.io.File
@@ -121,7 +122,8 @@ class HomeViewModel @Inject constructor(
     private val rootProvider: FileRootProvider,
     private val cloudManager: CloudManager,
     private val cloudSyncEngine: CloudSyncEngine,
-    syncSnapshotStore: SyncSnapshotStore
+    syncSnapshotStore: SyncSnapshotStore,
+    private val incomingShareStore: IncomingShareStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeUiState())
@@ -200,6 +202,12 @@ class HomeViewModel @Inject constructor(
                 cloudManager.providerFromPrefs(prefs, CloudProviderType.BAIDU)?.let { provider ->
                     runCatching { provider.checkAuth() }
                 }
+            }
+        }
+        viewModelScope.launch {
+            // 分享导入保存成功后刷新当前目录,新文件立即出现在列表中
+            incomingShareStore.savedTick.collect {
+                _state.value.currentDir?.let { dir -> loadDir(dir) }
             }
         }
         viewModelScope.launch {
@@ -297,6 +305,8 @@ class HomeViewModel @Inject constructor(
 
     private fun loadDir(dir: File) {
         viewModelScope.launch {
+            // 记录最近浏览目录:分享导入的"保存位置"默认取此值
+            incomingShareStore.setLastBrowsedDir(dir)
             _state.update { it.copy(loading = true, currentDir = dir, isRoot = dir == rootProvider.defaultRoot) }
             val items = fileRepository.list(dir)
             _state.update {

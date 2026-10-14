@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import xyz.normalwindow.htmlviewer.data.settings.AppLanguage
 import xyz.normalwindow.htmlviewer.data.settings.SettingsRepository
+import xyz.normalwindow.htmlviewer.data.share.IncomingShareStore
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -15,6 +16,10 @@ class HTMLViewerApp : Application() {
     /** 供 Composable(如 AppNavHost)读取主题模式等全局设置 */
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    /** 外部分享接收中转站(Activity 写入,导航图顶层消费) */
+    @Inject
+    lateinit var incomingShareStore: IncomingShareStore
 
     /**
      * 当前界面语言(内存缓存)。
